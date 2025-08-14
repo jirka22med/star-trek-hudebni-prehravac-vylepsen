@@ -485,7 +485,17 @@ window.tracks = [
     
     
     { src: 'https://www.dropbox.com/scl/fi/n25rk7ttqs1n5mwy566qs/nad-je-v-temn-ch-asech-2.webm?rlkey=i8nj4xk0mvrn96dy0v7tv3tpe&dl=1', title: 'nad-je-v-temn-ch-asech-2' }, 
+
+    { src: 'https://www.dropbox.com/scl/fi/ns3xzbpqudklphkxrlx7x/posledn-den-k-star-trek.mp3?rlkey=8edtzfmoz1s1yammfh6okj0za&st=2cwth94a&dl=1', title: 'poslední deník v-1' },       
+    { src: 'https://www.dropbox.com/scl/fi/ns3xzbpqudklphkxrlx7x/posledn-den-k-star-trek.mp3?rlkey=8edtzfmoz1s1yammfh6okj0za&st=1soldgnd&dl=1', title: 'posledni-denik-star-trek-vylepseni' },
+    { src: 'https://www.dropbox.com/scl/fi/cbyx6g1wjs12jlc284t7k/hvezdne-plameny-nova-verze-v.1.wav?rlkey=8k4ybikvvly2oswu43hoinduc&st=bdlijph2&dl=1', title: 'hvezdne-plameny-nova-verze-v.1' },
+    { src: 'https://www.dropbox.com/scl/fi/6lel9cfkydbt4gac9mxfv/hvezdne-plameny-nova-verze-v.2.wav?rlkey=rcrvzz7kbnrplwy0tz18pmr89&st=qm9osod8&dl=1', title: 'hvezdne-plameny-nova-verze-v.2' },   
+    { src: 'https://www.dropbox.com/scl/fi/44jbcrpdjnz0wtapfabfs/hvezdne-plameny-nova-verze-v.3.mp3?rlkey=5dfke4esq89is23fniqr8vutm&st=srjlunt5&dl=1', title: 'hvezdne-plameny-nova-verze-v.3' },
+    { src: 'https://www.dropbox.com/scl/fi/a18a1bd3rpzt05zgjl4dc/hvezdne-plameny-nova-verze-v.4-top.1.wav?rlkey=jie56xt6dvmk2r2zqpywc5r7d&st=lmnozcui&dl=1', title: 'hvezdne-plameny-nova-verze-v.4-top.1' },
+    { src: 'https://www.dropbox.com/scl/fi/iqih2sbr70y6czw7plexo/hvezdne-plameny-nova-verze-v.5-top.2.wav?rlkey=7smg0mi30tqwrhu7bwpnsaeoi&st=mbqm9j4t&dl=1', title: 'hvezdne-plameny-nova-verze-v.5-top.2' },
+    { src: 'https://www.dropbox.com/scl/fi/nvldbvq9um2srlk9oszpa/hvezdne-plameny-nova-verze-v.6-top.3.mp3?rlkey=udtqz7sv6cjcewzjcymlvnjii&st=r46rtj6d&dl=1', title: 'hvezdne-plameny-nova-verze-v.6-top.3' },       
     ]
+
 
 
  
