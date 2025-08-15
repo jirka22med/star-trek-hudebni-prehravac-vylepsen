@@ -324,9 +324,9 @@ button:active, .control-button:active {
     scrollbar-width: thin;
     scrollbar-color: var(--secondary-color) var(--background-light);
     background: var(--background-light);
-    border-radius: 12px;
+     
     
-    max-height: 280px;
+     
     box-shadow: var(--glow-effect);
 }
 
@@ -554,8 +554,8 @@ button:active, .control-button:active {
 .favorites-menu {
     display: none;
     position: absolute;
-    width: 300px;
-    max-height: 320px;
+    width: 420px;
+    max-height: 420px;
     overflow-y: auto;
     background-color: var(--background-dark);
     border: 1px solid var(--accent-color);
