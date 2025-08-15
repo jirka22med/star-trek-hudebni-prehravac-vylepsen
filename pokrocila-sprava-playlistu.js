@@ -1,2442 +1,1132 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎵 Audio Editor - Hvězdná flotila 🚀</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
-            color: #fff;
-            min-height: 100vh;
+/**
+ * 🖖 POKROČILÁ SPRÁVA PLAYLISTU - PŘÍPOJNÝ MODUL
+ * Více admirál Jiřík & Admirál Claude.AI
+ * Rozšíření pro audioPlayer.js s modálním oknem pro správu playlistu
+ */
+
+const DEBUG_PLAYLIST_MANAGER = false;
+
+// --- Globální proměnné pro správu playlistu ---
+let playlistManagerModal = null;
+let playlistManagerButton = null;
+let isPlaylistManagerInitialized = false;
+let draggedTrackIndex = null;
+let customTrackNames = JSON.parse(localStorage.getItem('customTrackNames') || '{}');
+
+// --- Vytvoření modálního okna ---
+function createPlaylistManagerModal() {
+    if (playlistManagerModal) return;
+    
+    playlistManagerModal = document.createElement('div');
+    playlistManagerModal.id = 'playlist-manager-modal';
+    playlistManagerModal.className = 'playlist-modal-overlay';
+    
+    playlistManagerModal.innerHTML = `
+        <div class="playlist-modal-content">
+            <div class="playlist-modal-header">
+                <h2>🖖 Pokročilá správa playlistu</h2>
+                <button class="modal-close-button" id="close-playlist-manager">✕</button>
+            </div>
+            
+            <div class="playlist-modal-body">
+                <!-- Ovládací panel -->
+                <div class="playlist-controls-panel">
+                    <div class="control-group">
+                        <button id="add-custom-track" class="playlist-action-btn">
+                            🎵 Přidat skladbu
+                        </button>
+                        <button id="import-playlist" class="playlist-action-btn">
+                            📥 Import M3U
+                        </button>
+                        <button id="export-playlist" class="playlist-action-btn">
+                            📤 Export M3U
+                        </button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="clear-custom-names" class="playlist-action-btn warning">
+                            🗑️ Vymazat vlastní názvy
+                        </button>
+                        <button id="reset-playlist-order" class="playlist-action-btn warning">
+                            ↩️ Obnovit pořadí
+                        </button>
+                    </div>
+                    
+                    <div class="playlist-stats">
+                        <span id="playlist-count">Skladeb: 0</span>
+                        <span id="favorites-count">Oblíbených: 0</span>
+                    </div>
+                </div>
+                
+                <!-- Seznam skladeb s pokročilými funkcemi -->
+                <div class="advanced-playlist" id="advanced-playlist">
+                    <div class="playlist-header">
+                        <span class="track-number">#</span>
+                        <span class="track-title">Název skladby</span>
+                        <span class="track-actions">Akce</span>
+                    </div>
+                    <div class="playlist-tracks" id="advanced-tracks-list">
+                        <!-- Zde budou skladby -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="playlist-modal-footer">
+                <button id="save-playlist-changes" class="playlist-save-btn">
+                    💾 Uložit změny
+                </button>
+                <button id="cancel-playlist-changes" class="playlist-cancel-btn">
+                    ❌ Zrušit
+                </button>
+            </div>
+        </div>
+        
+        <!-- Formulář pro přidání skladby -->
+        <div class="add-track-form" id="add-track-form" style="display: none;">
+            <div class="form-content">
+                <h3>➕ Přidat novou skladbu</h3>
+                <div class="form-group">
+                    <label for="track-title-input">Název skladby:</label>
+                    <input type="text" id="track-title-input" placeholder="Zadejte název skladby" />
+                </div>
+                <div class="form-group">
+                    <label for="track-url-input">URL adresa:</label>
+                    <input type="url" id="track-url-input" placeholder="https://..." />
+                </div>
+                <div class="form-actions">
+                    <button id="confirm-add-track" class="playlist-save-btn">✅ Přidat</button>
+                    <button id="cancel-add-track" class="playlist-cancel-btn">❌ Zrušit</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Import file input (skrytý) -->
+        <input type="file" id="import-file-input" accept=".m3u,.m3u8" style="display: none;" />
+    `;
+    
+    document.body.appendChild(playlistManagerModal);
+    
+    // Přidání CSS stylů
+    addPlaylistManagerStyles();
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Modální okno vytvořeno.");
+}
+
+// --- CSS styly pro modální okno ---
+function addPlaylistManagerStyles() {
+    const existingStyle = document.getElementById('playlist-manager-styles');
+    if (existingStyle) return;
+    
+    const style = document.createElement('style');
+    style.id = 'playlist-manager-styles';
+    style.textContent = `
+        /* === MODÁLNÍ OKNO SPRÁVY PLAYLISTU === */
+        .playlist-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
         }
         
-        .container {
-            max-width: 1000px;
-            margin: auto;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 30px;
+        .playlist-modal-overlay.show {
+            display: flex;
+        }
+        
+        .playlist-modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border: 2px solid #00d4ff;
             border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 212, 255, 0.3);
+            width: 90%;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow: hidden;
+            animation: modalSlideIn 0.4s ease-out;
         }
         
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
+        .playlist-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 20px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(90deg, #00d4ff, #0099cc);
+            color: #000;
         }
         
-        .header h1 {
+        .playlist-modal-header h2 {
             margin: 0;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 1.4em;
+            font-weight: bold;
         }
         
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .section h2 {
-            color: #4ecdc4;
-            margin-top: 0;
-            font-size: 1.5em;
-            border-bottom: 2px solid #4ecdc4;
-            padding-bottom: 10px;
-        }
-        
-        .input-file {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px dashed #4ecdc4;
-            border-radius: 10px;
-            color: #fff;
-            font-size: 16px;
+        .modal-close-button {
+            background: rgba(0, 0, 0, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            color: #000;
+            font-size: 18px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s;
         }
         
-        .input-file:hover {
-            background: rgba(78, 205, 196, 0.2);
-            border-color: #ff6b6b;
+        .modal-close-button:hover {
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            transform: scale(1.1);
         }
         
-        .audio-player {
-            width: 100%;
-            margin-bottom: 15px;
-            height: 50px;
-        }
-        
-        .eq-sliders {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+        .playlist-modal-body {
             padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            color: white;
+        }
+        
+        /* === OVLÁDACÍ PANEL === */
+        .playlist-controls-panel {
+            margin-bottom: 25px;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .playlist-action-btn {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .playlist-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+        
+        .playlist-action-btn.warning {
+            background: linear-gradient(45deg, #ff6b35, #cc5522);
+            color: white;
+        }
+        
+        .playlist-action-btn.warning:hover {
+            box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
+        }
+        
+        .playlist-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        
+        /* === POKROČILÝ PLAYLIST === */
+        .advanced-playlist {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 212, 255, 0.3);
         }
         
-        .eq-slider {
-            text-align: center;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-        }
-        
-        .eq-slider label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: bold;
-            color: #4ecdc4;
-        }
-        
-        .slider {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 6px;
-            border-radius: 5px;
-            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
-            outline: none;
-            opacity: 0.8;
-            transition: opacity 0.2s;
-            cursor: pointer;
-        }
-        
-        .slider:hover {
-            opacity: 1;
-        }
-        
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #fff;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-        }
-        
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #fff;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            border: none;
-        }
-        
-        .effects-grid {
+        .playlist-header {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: 50px 1fr 200px;
             gap: 15px;
+            padding: 12px 15px;
+            background: rgba(0, 212, 255, 0.1);
+            font-weight: bold;
+            color: #00d4ff;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .playlist-tracks {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .advanced-track-item {
+            display: grid;
+            grid-template-columns: 50px 1fr 200px;
+            gap: 15px;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+            cursor: grab;
+        }
+        
+        .advanced-track-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .advanced-track-item.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-left: 4px solid #00d4ff;
+        }
+        
+        .advanced-track-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .track-number {
+            color: #888;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .track-title-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .track-title-display {
+            font-weight: bold;
+            color: white;
+        }
+        
+        .track-title-edit {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            padding: 5px 8px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .track-original-title {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+        }
+        
+        .track-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .track-btn {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            padding: 5px 8px;
+            color: #00d4ff;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        
+        .track-btn:hover {
+            background: #00d4ff;
+            color: #000;
+        }
+        
+        .track-btn.danger {
+            border-color: #ff6b35;
+            color: #ff6b35;
+        }
+        
+        .track-btn.danger:hover {
+            background: #ff6b35;
+            color: white;
+        }
+        
+        /* === FORMULÁŘ PŘIDÁNÍ SKLADBY === */
+        .add-track-form {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 25px;
+            z-index: 10001;
+            box-shadow: 0 20px 60px rgba(0, 212, 255, 0.4);
+        }
+        
+        .form-content h3 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: white;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
             margin-top: 20px;
         }
         
-        .effect-control {
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* === FOOTER === */
+        .playlist-modal-footer {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 15px;
+            justify-content: center;
         }
         
-        .effect-control label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #ff6b6b;
-        }
-        
-        .button {
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        .playlist-save-btn, .playlist-cancel-btn {
+            padding: 12px 24px;
             border: none;
-            color: white;
-            padding: 15px 25px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 8px 4px;
+            border-radius: 8px;
+            font-weight: bold;
             cursor: pointer;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            transition: all 0.3s;
         }
         
-        .button:hover {
+        .playlist-save-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .playlist-save-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
         }
         
-        .button:active {
-            transform: translateY(0);
+        .playlist-cancel-btn {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            color: white;
         }
         
-        .button.playing {
-            background: linear-gradient(45deg, #ff4757, #2ed573);
-            animation: pulse 1.5s infinite;
+        .playlist-cancel-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
         }
         
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        /* === ANIMACE === */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         
-        #visualization {
-            width: 100%;
-            height: 200px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            border: 2px solid #4ecdc4;
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
         
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
+        /* === RESPONSIVNÍ DESIGN === */
+        @media (max-width: 768px) {
+            .playlist-modal-content {
+                width: 95%;
+                max-height: 90vh;
+            }
+            
+            .playlist-header,
+            .advanced-track-item {
+                grid-template-columns: 40px 1fr 120px;
+                gap: 10px;
+            }
+            
+            .control-group {
+                flex-direction: column;
+            }
+            
+            .playlist-action-btn {
+                width: 100%;
+            }
         }
-        
-        .status.success {
-            background: rgba(46, 213, 115, 0.2);
-            border: 1px solid #2ed573;
-            color: #2ed573;
-        }
-        
-        .status.error {
-            background: rgba(255, 71, 87, 0.2);
-            border: 1px solid #ff4757;
-            color: #ff4757;
-        }
-        
-        .status.info {
-            background: rgba(78, 205, 196, 0.2);
-            border: 1px solid #4ecdc4;
-            color: #4ecdc4;
-        }
-        
-        .value-display {
-            font-size: 12px;
-            color: #ccc;
-            margin-top: 5px;
-        }
-        
-        
-        /* 🛡️ POKROČILÉ EFEKTY - NEUTRALNÍ CSS STYLY */
-
-/* Hlavní kontejner pro pokročilé efekty */
-#advanced-effects-section {
-    background: #2a2a2a;
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 20px 0;
-    color: #ffffff;
+    `;
+    
+    document.head.appendChild(style);
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Styly přidány.");
 }
 
-/* Nadpisy sekcí */
-#advanced-effects-section h3 {
-    color: #00ff00;
-    font-size: 18px;
-    font-weight: bold;
-    margin: 20px 0 15px 0;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #444;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-#advanced-effects-section h3:first-child {
-    margin-top: 0;
-}
-
-/* Kontejner pro jeden ovládací prvek */
-.advanced-control {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 15px 0;
-    padding: 10px;
-    background: #333;
-    border: 1px solid #555;
-    border-radius: 6px;
-}
-
-/* Styly pro labely */
-.advanced-control label {
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0e0e0;
-    min-width: 160px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-/* Hodnoty parametrů */
-.parameter-value {
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    color: #00ff00;
-    background: #1a1a1a;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid #00ff00;
-    min-width: 60px;
-    text-align: center;
-}
-
-/* Styly pro slidery */
-.advanced-control input[type="range"] {
-    flex: 1;
-    margin-left: 20px;
-    height: 6px;
-    border-radius: 3px;
-    background: #555;
-    outline: none;
-    border: none;
-}
-
-/* Slider track */
-.advanced-control input[type="range"]::-webkit-slider-track {
-    height: 15px;
-    border-radius: 3px;
-    background: #555;
-    border: none;
-}
-
-.advanced-control input[type="range"]::-moz-range-track {
-    height: 6px;
-    border-radius: 3px;
-    background: #555;
-    border: none;
-}
-
-/* Slider thumb */
-.advanced-control input[type="range"]::-webkit-slider-thumb {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #00ff00;
-    border: 2px solid #ffffff;
-    cursor: pointer;
-}
-
-.advanced-control input[type="range"]::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #00ff00;
-    border: 2px solid #ffffff;
-    cursor: pointer;
-}
-
-/* Hover efekty pro slidery */
-.advanced-control input[type="range"]:hover::-webkit-slider-thumb {
-    background: #00cc00;
-    transform: scale(1.1);
-}
-
-.advanced-control input[type="range"]:hover::-moz-range-thumb {
-    background: #00cc00;
-    transform: scale(1.1);
-}
-
-/* Specifické styly pro Noise Gate */
-.noise-gate-controls {
-    border-left: 4px solid #ff6b6b;
-}
-
-.noise-gate-controls h3 {
-    color: #ff6b6b;
-}
-
-.noise-gate-controls .parameter-value {
-    color: #ff6b6b;
-    border-color: #ff6b6b;
-}
-
-.noise-gate-controls input[type="range"]::-webkit-slider-thumb {
-    background: #ff6b6b;
-}
-
-.noise-gate-controls input[type="range"]::-moz-range-thumb {
-    background: #ff6b6b;
-}
-
-/* Specifické styly pro Multiband Compressor */
-.multiband-controls {
-    border-left: 4px solid #4dabf7;
-}
-
-.multiband-controls h3 {
-    color: #4dabf7;
-}
-
-.multiband-controls .parameter-value {
-    color: #4dabf7;
-    border-color: #4dabf7;
-}
-
-.multiband-controls input[type="range"]::-webkit-slider-thumb {
-    background: #4dabf7;
-}
-
-.multiband-controls input[type="range"]::-moz-range-thumb {
-    background: #4dabf7;
-}
-
-/* Responzivní design */
-@media (max-width: 768px) {
-    .advanced-control {
-        flex-direction: column;
-        align-items: stretch;
+// --- Vytvoření tlačítka pro otevření správy playlistu ---
+function createPlaylistManagerButton() {
+    if (playlistManagerButton) return;
+    
+    playlistManagerButton = document.createElement('button');
+    playlistManagerButton.id = 'playlist-manager-button';
+    playlistManagerButton.className = 'control-button';
+    playlistManagerButton.title = 'Pokročilá správa playlistu (Ctrl+P)';
+    playlistManagerButton.innerHTML = '🎛️';
+    
+    // Přidání do control panelu
+    const controlsDiv = document.querySelector('#control-panel');
+    if (controlsDiv) {
+        controlsDiv.appendChild(playlistManagerButton);
+    } else {
+        console.warn("PlaylistManager: Nenalezen element .controls pro tlačítko.");
     }
     
-    .advanced-control label {
-        margin-bottom: 10px;
-        min-width: auto;
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Tlačítko vytvořeno.");
+}
+
+// --- Naplnění pokročilého playlistu ---
+function populateAdvancedPlaylist() {
+    const tracksList = document.getElementById('advanced-tracks-list');
+    const playlistCount = document.getElementById('playlist-count');
+    const favoritesCount = document.getElementById('favorites-count');
+    
+    if (!tracksList) return;
+    
+    tracksList.innerHTML = '';
+    
+    if (!window.tracks || window.tracks.length === 0) {
+        tracksList.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Žádné skladby v playlistu</div>';
+        if (playlistCount) playlistCount.textContent = 'Skladeb: 0';
+        return;
     }
     
-    .advanced-control input[type="range"] {
-        margin-left: 0;
-        margin-top: 10px;
-    }
-}
-
-/* Status indikátory */
-.effect-status {
-    font-size: 12px;
-    color: #888;
-    font-style: italic;
-    margin-top: 5px;
-}
-
-.effect-active .effect-status {
-    color: #00ff00;
-}
-
-/* Tooltip styly */
-.advanced-control[title]:hover {
-    background: #3a3a3a;
-}
-
-/* Gruppování ovládacích prvků */
-.control-group {
-    background: #2a2a2a;
-    border: 1px solid #444;
-    border-radius: 6px;
-    padding: 15px;
-    margin: 10px 0;
-}
-
-.control-group:last-child {
-    margin-bottom: 0;
-}
+    // Aktualizace statistik
+    if (playlistCount) playlistCount.textContent = `Skladeb: ${window.tracks.length}`;
+    if (favoritesCount && window.favorites) favoritesCount.textContent = `Oblíbených: ${window.favorites.length}`;
+    
+    window.tracks.forEach((track, index) => {
+        const trackItem = document.createElement('div');
+        trackItem.className = 'advanced-track-item';
+        trackItem.draggable = true;
+        trackItem.dataset.trackIndex = index;
         
+        // Kontrola, zda je skladba aktuálně přehrávaná
+        const isActive = (index === window.currentTrackIndex && 
+                         window.DOM && window.DOM.audioPlayer && !window.DOM.audioPlayer.paused);
         
-        @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0.3; }
-}
-
-.meter-container .channel-meter canvas {
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-.peak-section {
-    min-width: 200px;
-}
-
-#peak-indicator {
-    transition: all 0.3s ease;
-}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎵 Audio Editor - Hvězdná flotila 🚀</h1>
-            <p>Admirál Claude.AI k vašim službám, více admirále Jiříku!</p>
-        </div>
-
-        <div class="section" id="upload-section">
-            <h2>🎼 Nahrát písničku (MP3/WAV)</h2>
-            <input type="file" id="file-input" class="input-file" accept="audio/*">
-            <div id="upload-status"></div>
-        </div>
-
-        <div class="section" id="before-edit-section" style="display: none;">
-            <h2>🎧 Poslech před úpravou</h2>
-            <audio id="audio-before" class="audio-player" controls></audio>
-        </div>
-
-        <div class="section" id="equalizer-section" style="display: none;">
-            <h2>🎚️ Ekvalizér</h2>
-            <div class="eq-sliders">
-                <div class="eq-slider">
-                    <label for="eq-32">32 Hz</label>
-                    <input type="range" id="eq-32" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-32-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-64">64 Hz</label>
-                    <input type="range" id="eq-64" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-64-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-125">125 Hz</label>
-                    <input type="range" id="eq-125" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-125-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-250">250 Hz</label>
-                    <input type="range" id="eq-250" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-250-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-500">500 Hz</label>
-                    <input type="range" id="eq-500" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-500-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-1k">1 kHz</label>
-                    <input type="range" id="eq-1k" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-1k-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-2k">2 kHz</label>
-                    <input type="range" id="eq-2k" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-2k-value">0 dB</div>
-                </div>
-                <div class="eq-slider">
-                    <label for="eq-4k">4 kHz</label>
-                    <input type="range" id="eq-4k" class="slider" min="-12" max="12" value="0" step="0.1" style="height: 20px;">
-                    <div class="value-display" id="eq-4k-value">0 dB</div>
-                </div>
+        if (isActive) trackItem.classList.add('active');
+        
+        const customName = customTrackNames[track.src] || '';
+        const displayTitle = customName || track.title;
+        
+        trackItem.innerHTML = `
+            <div class="track-number">${index + 1}</div>
+            <div class="track-title-container">
+                <div class="track-title-display" onclick="editTrackTitle(${index})">${displayTitle}</div>
+                ${customName ? `<div class="track-original-title">Původní: ${track.title}</div>` : ''}
             </div>
-              
-            <h3>🎛️ Další efekty</h3>
-            <div class="effects-grid">
-                <div class="effect-control">
-                    <label for="volume">🔊 Hlasitost:</label>
-                    <input type="range" id="volume" class="slider" min="0" max="2" step="0.01" value="1" style="height: 20px;">
-                    <div class="value-display" id="volume-value">100%</div>
-                </div>
-                <div class="effect-control">
-                    <label for="reverb">🏛️ Reverb:</label>
-                    <input type="range" id="reverb" class="slider" min="0" max="1" step="0.01" value="0" style="height: 20px;">
-                    <div class="value-display" id="reverb-value">0%</div>
-                </div>
-                <div class="effect-control">
-                    <label for="delay">⏱️ Delay:</label>
-                    <input type="range" id="delay" class="slider" min="0" max="1" step="0.01" value="0" style="height: 20px;">
-                    <div class="value-display" id="delay-value">0%</div>
-                </div>
-                <div class="effect-control">
-                    <label for="chorus">🌊 Chorus:</label>
-                    <input type="range" id="chorus" class="slider" min="0" max="1" step="0.01" value="0" style="height: 20px;">
-                    <div class="value-display" id="chorus-value">0%</div>
-                </div>
-                <div class="effect-control">
-                    <label for="distortion">🔥 Distortion:</label>
-                    <input type="range" id="distortion" class="slider" min="0" max="1" step="0.01" value="0" style="height: 20px;">
-                    <div class="value-display" id="distortion-value">0%</div>
-                </div>
-                <div class="effect-control">
-                    <label for="compressor">🗜️ Compressor:</label>
-                    <input type="range" id="compressor" class="slider" min="-60" max="0" step="1" value="-24" style="height: 20px;">
-                    <div class="value-display" id="compressor-value">-24 dB</div>
-                </div>
-            </div>
-        </div>
-           
-   <!-- 🎚️ LEVEL METER SECTION - přidej toto do svého HTML -->
-<section id="level-meter-section" class="section" style="display: none;">
-    <h2>🎚️ Level Metering</h2>
-    
-    <div class="meter-container" style="
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 30px;
-        margin: 20px 0;
-        padding: 20px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-    ">
-        <!-- Levý kanál -->
-        <div class="channel-meter" style="text-align: center;">
-            <h3 style="color: white; margin-bottom: 10px;">Levý kanál</h3>
-            <canvas id="left-meter" style="
-                border: 2px solid #333;
-                border-radius: 5px;
-                background: #111;
-            "></canvas>
-            <div id="left-meter-value" style="
-                color: #00ff00;
-                font-family: monospace;
-                font-size: 14px;
-                font-weight: bold;
-                margin-top: 10px;
-            ">-60.0 dB</div>
-        </div>
-        
-        <!-- Pravý kanál -->
-        <div class="channel-meter" style="text-align: center;">
-            <h3 style="color: white; margin-bottom: 10px;">Pravý kanál</h3>
-            <canvas id="right-meter" style="
-                border: 2px solid #333;
-                border-radius: 5px;
-                background: #111;
-            "></canvas>
-            <div id="right-meter-value" style="
-                color: #00ff00;
-                font-family: monospace;
-                font-size: 14px;
-                font-weight: bold;
-                margin-top: 10px;
-            ">-60.0 dB</div>
-        </div>
-        
-        <!-- Peak indikátor -->
-        <div class="peak-section" style="text-align: center;">
-            <h3 style="color: white; margin-bottom: 20px;">Peak Status</h3>
-            <div id="peak-indicator" style="
-                font-size: 18px;
-                font-weight: bold;
-                padding: 15px 20px;
-                border-radius: 10px;
-                background: rgba(0, 0, 0, 0.3);
-                border: 2px solid #333;
-                min-height: 60px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            ">🟢 OK</div>
-            
-            <!-- Info o úrovních -->
-            <div style="
-                margin-top: 15px;
-                font-size: 12px;
-                color: #ccc;
-                text-align: left;
-                background: rgba(0, 0, 0, 0.2);
-                padding: 10px;
-                border-radius: 5px;
-            ">
-                <div><span style="color: #00ff00;">🟢</span> -24dB až -12dB: OK</div>
-                <div><span style="color: #ffff00;">🟡</span> -12dB až -6dB: Dobrá úroveň</div>
-                <div><span style="color: #ff8800;">🟠</span> -6dB až -3dB: Vysoká úroveň</div>
-                <div><span style="color: #ff0000;">🔴</span> -3dB+: PEAK/Clipping!</div>
-            </div>
-        </div>
-    </div>
-</section>
-        
-        <div class="section" id="after-edit-section" style="display: none;">
-            <h2>🎵 Upravenou písničku</h2>
-            <div style="text-align: center;">
-                <button id="play-button" class="button">▶️ Přehrát upravenou písničku</button>
-                <button id="reset-button" class="button">🔄 Reset všech efektů</button>
-                <button id="download-button" class="button">💾 Stáhnout upravenou písničku</button>
-            </div>
-            <div id="playback-status"></div>
-        </div>
-         <!-- Vlož někam do HTML, kde chceš progress bar -->
-<div id="progress-container" style="display: none; margin: 20px 0;">
-    <div style="margin-bottom: 10px;">
-        <span id="progress-text">Připravuji download...</span>
-        <span id="progress-percent" style="float: right; font-weight: bold;">0%</span>
-    </div>
-    <div style="width: 100%; height: 20px; background-color: #333; border-radius: 10px; overflow: hidden;">
-        <div id="progress-bar" style="width: 0%; height: 100%; background-color: #ffa500; transition: all 0.3s ease; border-radius: 10px;"></div>
-    </div>
-</div>
-        <div class="section" id="visualization-section" style="display: none;">
-            <h2>📊 Vizualizace zvuku</h2>
-            <canvas id="visualization"></canvas>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.20/Tone.min.js"></script>
-    <script>
-// 🚀 ULTRA HD AUDIO EDITOR - COMPLETE EDITION
-// Více admirál Jiřík's Starfleet Audio Engineering Protocol
-// Integrované Ultra HD Quality Enhancement
-
-class AudioEditor {
-    constructor() {
-        this.audioBuffer = null;
-        this.player = null;
-        this.equalizer = [];
-        this.effects = {};
-        this.isPlaying = false;
-        this.analyser = null;
-        this.animationId = null;
-        this.canvas = null;
-        this.ctx = null;
-        
-        // 🎚️ Level metering
-        this.meter = null;
-        this.meterAnimationId = null;
-        this.leftMeterCtx = null;
-        this.rightMeterCtx = null;
-        this.leftMeterCanvas = null;
-        this.rightMeterCanvas = null;
-        
-        // 🚀 ULTRA HD QUALITY ENHANCER
-        this.qualityEnhancer = null;
-        
-        this.init();
-    }
-    
-    init() {
-        this.setupEventListeners();
-        this.setupCanvas();
-        this.setupMeterCanvas();
-        
-        // 🎯 INICIALIZACE ULTRA HD QUALITY ENHANCER
-        this.qualityEnhancer = new UltraHDAudioQualityEnhancer(this);
-        this.qualityEnhancer.integrateWithAudioEditor();
-        
-        this.showStatus('info', '🚀 Ultra HD Audio Editor připraven k použití!');
-    }
-    
-    setupEventListeners() {
-        // File upload
-        document.getElementById('file-input').addEventListener('change', (e) => this.handleFileUpload(e));
-        
-        // Play button
-        document.getElementById('play-button').addEventListener('click', () => this.togglePlayback());
-        
-        // Reset button
-        document.getElementById('reset-button').addEventListener('click', () => this.resetAllEffects());
-        
-        // Download button
-        document.getElementById('download-button').addEventListener('click', () => this.downloadAudio());
-        
-        // EQ sliders
-        const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
-        eqSliders.forEach(freq => {
-            const slider = document.getElementById(`eq-${freq}`);
-            slider.addEventListener('input', () => {
-                this.updateEqualizer();
-                this.updateValueDisplay(`eq-${freq}`, slider.value + ' dB');
-            });
-        });
-        
-        // Effect sliders
-        const effectSliders = ['volume', 'reverb', 'delay', 'chorus', 'distortion', 'compressor'];
-        effectSliders.forEach(effect => {
-            const slider = document.getElementById(effect);
-            slider.addEventListener('input', () => {
-                this.updateEffects();
-                this.updateEffectValueDisplay(effect, slider.value);
-            });
-        });
-    }
-    
-    setupCanvas() {
-        this.canvas = document.getElementById('visualization');
-        this.ctx = this.canvas.getContext('2d');
-        this.canvas.width = this.canvas.offsetWidth;
-        this.canvas.height = 200;
-    }
-    
-    setupMeterCanvas() {
-        this.leftMeterCanvas = document.getElementById('left-meter');
-        this.rightMeterCanvas = document.getElementById('right-meter');
-        
-        if (this.leftMeterCanvas && this.rightMeterCanvas) {
-            this.leftMeterCtx = this.leftMeterCanvas.getContext('2d');
-            this.rightMeterCtx = this.rightMeterCanvas.getContext('2d');
-            
-            this.leftMeterCanvas.width = 20;
-            this.leftMeterCanvas.height = 200;
-            this.rightMeterCanvas.width = 20;
-            this.rightMeterCanvas.height = 200;
-        }
-    }
-    
-    async handleFileUpload(event) {
-        try {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            this.showStatus('info', '📁 Načítání souboru...');
-            
-            const url = URL.createObjectURL(file);
-            document.getElementById('audio-before').src = url;
-            
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            this.audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
-            
-            await this.setupAudioChain();
-            this.showSections();
-            this.showStatus('success', `✅ Soubor "${file.name}" úspěšně načten!`);
-            
-            // 🎯 AKTUALIZUJ QUALITY PREDICTION
-            if (this.qualityEnhancer) {
-                this.qualityEnhancer.updateQualityPrediction();
-            }
-            
-        } catch (error) {
-            console.error('Error loading file:', error);
-            this.showStatus('error', '❌ Chyba při načítání souboru!');
-        }
-    }
-    
-    async setupAudioChain() {
-        try {
-            // Cleanup previous setup
-            if (this.player) {
-                this.player.disconnect();
-                this.player.dispose();
-            }
-            if (this.meter) {
-                this.meter.dispose();
-            }
-            
-            // Create new player
-            this.player = new Tone.Player(this.audioBuffer);
-            
-            // Create 8-band equalizer
-            const frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000];
-            this.equalizer = frequencies.map((freq, index) => {
-                const filter = new Tone.Filter({
-                    frequency: freq,
-                    type: 'peaking',
-                    Q: 1,
-                    gain: 0
-                });
-                return filter;
-            });
-            
-            // Create effects
-            this.effects = {
-                reverb: new Tone.Reverb({ wet: 0, decay: 1.5, roomSize: 0.7 }),
-                delay: new Tone.FeedbackDelay({ wet: 0, feedback: 0.3, delayTime: "8n" }),
-                chorus: new Tone.Chorus({ wet: 0, frequency: 1.5, depth: 0.7, spread: 180 }),
-                distortion: new Tone.Distortion({ wet: 0, distortion: 0.4 }),
-                compressor: new Tone.Compressor({ threshold: -24, ratio: 3, attack: 0.03, release: 0.25 })
-            };
-            
-            // Level meter
-            this.meter = new Tone.Meter({
-                channelCount: 2,
-                smoothing: 0.8,
-                normalRange: true
-            });
-            
-            // Wait for reverb to be ready
-            await this.effects.reverb.ready;
-            
-            // Create audio chain
-            const chain = [
-                this.player,
-                ...this.equalizer,
-                this.effects.reverb,
-                this.effects.delay,
-                this.effects.chorus,
-                this.effects.distortion,
-                this.effects.compressor
-            ];
-            
-            Tone.connectSeries(...chain, Tone.Destination);
-            
-            // Connect meter
-            this.effects.compressor.connect(this.meter);
-            
-            // Setup analyzer for visualization
-            this.analyser = new Tone.Analyser('waveform', 512);
-            this.effects.compressor.connect(this.analyser);
-            
-            this.updateAllEffects();
-            
-        } catch (error) {
-            console.error('Error setting up audio chain:', error);
-            this.showStatus('error', '❌ Chyba při nastavování audio řetězce!');
-        }
-    }
-    
-    updateEqualizer() {
-        if (!this.equalizer.length) return;
-        
-        const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
-        eqSliders.forEach((freq, index) => {
-            if (this.equalizer[index]) {
-                const value = parseFloat(document.getElementById(`eq-${freq}`).value);
-                this.equalizer[index].gain.value = value;
-            }
-        });
-    }
-    
-    updateEffects() {
-        if (!this.player || !this.effects) return;
-        
-        try {
-            // Volume
-            const volume = parseFloat(document.getElementById('volume').value);
-            this.player.volume.value = Tone.gainToDb(volume);
-            
-            // Effects
-            this.effects.reverb.wet.value = parseFloat(document.getElementById('reverb').value);
-            this.effects.delay.wet.value = parseFloat(document.getElementById('delay').value);
-            this.effects.chorus.wet.value = parseFloat(document.getElementById('chorus').value);
-            this.effects.distortion.wet.value = parseFloat(document.getElementById('distortion').value);
-            this.effects.compressor.threshold.value = parseFloat(document.getElementById('compressor').value);
-            
-        } catch (error) {
-            console.error('Error updating effects:', error);
-        }
-    }
-    
-    updateAllEffects() {
-        this.updateEqualizer();
-        this.updateEffects();
-        this.updateAllValueDisplays();
-    }
-    
-    updateValueDisplay(id, value) {
-        const display = document.getElementById(`${id}-value`);
-        if (display) display.textContent = value;
-    }
-    
-    updateEffectValueDisplay(effect, value) {
-        let displayValue = value;
-        switch (effect) {
-            case 'volume':
-                displayValue = Math.round(parseFloat(value) * 100) + '%';
-                break;
-            case 'reverb':
-            case 'delay':
-            case 'chorus':
-            case 'distortion':
-                displayValue = Math.round(parseFloat(value) * 100) + '%';
-                break;
-            case 'compressor':
-                displayValue = value + ' dB';
-                break;
-        }
-        this.updateValueDisplay(effect, displayValue);
-    }
-    
-    updateAllValueDisplays() {
-        // EQ displays
-        const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
-        eqSliders.forEach(freq => {
-            const slider = document.getElementById(`eq-${freq}`);
-            this.updateValueDisplay(`eq-${freq}`, slider.value + ' dB');
-        });
-        
-        // Effect displays
-        const effectSliders = ['volume', 'reverb', 'delay', 'chorus', 'distortion', 'compressor'];
-        effectSliders.forEach(effect => {
-            const slider = document.getElementById(effect);
-            this.updateEffectValueDisplay(effect, slider.value);
-        });
-    }
-    
-    async togglePlayback() {
-        if (!this.player) return;
-        
-        try {
-            await Tone.start();
-            
-            const button = document.getElementById('play-button');
-            
-            if (this.isPlaying) {
-                this.player.stop();
-                button.textContent = "▶️ Přehrát upravenou písničku";
-                button.classList.remove('playing');
-                this.isPlaying = false;
-                this.stopVisualization();
-                this.stopLevelMetering();
-                this.showPlaybackStatus('⏹️ Přehrávání zastaveno');
-            } else {
-                this.player.start();
-                button.textContent = "⏸️ Zastavit přehrávání";
-                button.classList.add('playing');
-                this.isPlaying = true;
-                this.startVisualization();
-                this.startLevelMetering();
-                this.showPlaybackStatus('▶️ Přehrávání spuštěno');
-                
-                // Auto-stop when finished
-                this.player.onstop = () => {
-                    if (this.isPlaying) {
-                        button.textContent = "▶️ Přehrát upravenou písničku";
-                        button.classList.remove('playing');
-                        this.isPlaying = false;
-                        this.stopVisualization();
-                        this.stopLevelMetering();
-                        this.showPlaybackStatus('✅ Přehrávání dokončeno');
-                    }
-                };
-            }
-        } catch (error) {
-            console.error('Error toggling playback:', error);
-            this.showStatus('error', '❌ Chyba při přehrávání!');
-        }
-    }
-    
-    startLevelMetering() {
-        if (!this.meter || !this.leftMeterCtx || !this.rightMeterCtx) return;
-        
-        const drawMeters = () => {
-            if (!this.isPlaying) return;
-            
-            this.meterAnimationId = requestAnimationFrame(drawMeters);
-            
-            const levels = this.meter.getValue();
-            const leftLevel = Array.isArray(levels) ? levels[0] : levels;
-            const rightLevel = Array.isArray(levels) ? (levels[1] || levels[0]) : levels;
-            
-            this.drawMeter(this.leftMeterCtx, this.leftMeterCanvas, leftLevel, 'L');
-            this.drawMeter(this.rightMeterCtx, this.rightMeterCanvas, rightLevel, 'R');
-            this.updateMeterValues(leftLevel, rightLevel);
-        };
-        
-        drawMeters();
-    }
-    
-    stopLevelMetering() {
-        if (this.meterAnimationId) {
-            cancelAnimationFrame(this.meterAnimationId);
-            this.meterAnimationId = null;
-        }
-        
-        if (this.leftMeterCtx && this.leftMeterCanvas) {
-            this.leftMeterCtx.clearRect(0, 0, this.leftMeterCanvas.width, this.leftMeterCanvas.height);
-        }
-        if (this.rightMeterCtx && this.rightMeterCanvas) {
-            this.rightMeterCtx.clearRect(0, 0, this.rightMeterCanvas.width, this.rightMeterCanvas.height);
-        }
-        
-        this.updateMeterValues(0, 0);
-    }
-    
-    drawMeter(ctx, canvas, level, label) {
-        const width = canvas.width;
-        const height = canvas.height;
-        
-        ctx.clearRect(0, 0, width, height);
-        
-        const dbLevel = level > 0 ? 20 * Math.log10(level) : -60;
-        const normalizedLevel = Math.max(0, (dbLevel + 60) / 60);
-        
-        const barHeight = normalizedLevel * (height - 20);
-        
-        // Background
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(2, 10, width - 4, height - 20);
-        
-        // Main bar gradient
-        const gradient = ctx.createLinearGradient(0, height - 10, 0, 10);
-        
-        if (normalizedLevel < 0.7) {
-            gradient.addColorStop(0, '#00ff00');
-            gradient.addColorStop(0.7, '#ffff00');
-            gradient.addColorStop(1, '#ffff00');
-        } else if (normalizedLevel < 0.9) {
-            gradient.addColorStop(0, '#00ff00');
-            gradient.addColorStop(0.7, '#ffff00');
-            gradient.addColorStop(0.9, '#ff8800');
-            gradient.addColorStop(1, '#ff8800');
-        } else {
-            gradient.addColorStop(0, '#00ff00');
-            gradient.addColorStop(0.7, '#ffff00');
-            gradient.addColorStop(0.9, '#ff8800');
-            gradient.addColorStop(1, '#ff0000');
-        }
-        
-        ctx.fillStyle = gradient;
-        ctx.fillRect(2, height - 10 - barHeight, width - 4, barHeight);
-        
-        // Label
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, width / 2, height - 2);
-        
-        // Level indicators
-        ctx.strokeStyle = '#666666';
-        ctx.lineWidth = 1;
-        
-        for (let i = 0; i <= 10; i++) {
-            const y = 10 + (height - 20) * (i / 10);
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(width, y);
-            ctx.stroke();
-        }
-    }
-    
-    updateMeterValues(leftLevel, rightLevel) {
-        const leftDb = leftLevel > 0 ? 20 * Math.log10(leftLevel) : -60;
-        const rightDb = rightLevel > 0 ? 20 * Math.log10(rightLevel) : -60;
-        
-        const leftDisplay = document.getElementById('left-meter-value');
-        const rightDisplay = document.getElementById('right-meter-value');
-        
-        if (leftDisplay) {
-            leftDisplay.textContent = leftDb.toFixed(1) + ' dB';
-            
-            if (leftDb > -6) {
-                leftDisplay.style.color = '#ff0000';
-            } else if (leftDb > -12) {
-                leftDisplay.style.color = '#ff8800';
-            } else if (leftDb > -24) {
-                leftDisplay.style.color = '#ffff00';
-            } else {
-                leftDisplay.style.color = '#00ff00';
-            }
-        }
-        
-        if (rightDisplay) {
-            rightDisplay.textContent = rightDb.toFixed(1) + ' dB';
-            
-            if (rightDb > -6) {
-                rightDisplay.style.color = '#ff0000';
-            } else if (rightDb > -12) {
-                rightDisplay.style.color = '#ff8800';
-            } else if (rightDb > -24) {
-                rightDisplay.style.color = '#ffff00';
-            } else {
-                rightDisplay.style.color = '#00ff00';
-            }
-        }
-        
-        const peakIndicator = document.getElementById('peak-indicator');
-        if (peakIndicator) {
-            const maxDb = Math.max(leftDb, rightDb);
-            if (maxDb > -3) {
-                peakIndicator.textContent = '🔴 PEAK!';
-                peakIndicator.style.color = '#ff0000';
-                peakIndicator.style.animation = 'blink 0.5s infinite';
-            } else if (maxDb > -6) {
-                peakIndicator.textContent = '🟡 HIGH';
-                peakIndicator.style.color = '#ff8800';
-                peakIndicator.style.animation = 'none';
-            } else {
-                peakIndicator.textContent = '🟢 OK';
-                peakIndicator.style.color = '#00ff00';
-                peakIndicator.style.animation = 'none';
-            }
-        }
-    }
-    
-    resetAllEffects() {
-        // Reset EQ
-        const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
-        eqSliders.forEach(freq => {
-            document.getElementById(`eq-${freq}`).value = 0;
-        });
-        
-        // Reset effects
-        document.getElementById('volume').value = 1;
-        document.getElementById('reverb').value = 0;
-        document.getElementById('delay').value = 0;
-        document.getElementById('chorus').value = 0;
-        document.getElementById('distortion').value = 0;
-        document.getElementById('compressor').value = -24;
-        
-        this.updateAllEffects();
-        this.showStatus('success', '🔄 Všechny efekty resetovány!');
-    }
-    
-    startVisualization() {
-        if (!this.analyser || !this.canvas) return;
-        
-        const draw = () => {
-            if (!this.isPlaying) return;
-            
-            this.animationId = requestAnimationFrame(draw);
-            
-            const waveform = this.analyser.getValue();
-            const width = this.canvas.width;
-            const height = this.canvas.height;
-            
-            this.ctx.clearRect(0, 0, width, height);
-            
-            // Draw waveform
-            this.ctx.beginPath();
-            this.ctx.strokeStyle = '#00ff00';
-            this.ctx.lineWidth = 2;
-            
-            for (let i = 0; i < waveform.length; i++) {
-                const x = (i / waveform.length) * width;
-                const y = ((waveform[i] + 1) / 2) * height;
-                
-                if (i === 0) {
-                    this.ctx.moveTo(x, y);
-                } else {
-                    this.ctx.lineTo(x, y);
-                }
-            }
-            
-            this.ctx.stroke();
-            
-            // Draw frequency bars
-            this.ctx.fillStyle = 'rgba(255, 107, 107, 0.6)';
-            const barWidth = width / waveform.length;
-            
-            for (let i = 0; i < waveform.length; i += 4) {
-                const barHeight = Math.abs(waveform[i]) * height;
-                const x = (i / waveform.length) * width;
-                const y = height - barHeight;
-                
-                this.ctx.fillRect(x, y, barWidth * 2, barHeight);
-            }
-        };
-        
-        draw();
-    }
-    
-    stopVisualization() {
-        if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
-            this.animationId = null;
-        }
-        
-        if (this.ctx && this.canvas) {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        }
-    }
-    
-    // 🚀 ENHANCED DOWNLOAD FUNCTION - používá Quality Enhancer
-    async downloadAudio() {
-        if (!this.player || !this.audioBuffer) {
-            this.showStatus('error', '❌ Není co stáhnout!');
-            return;
-        }
-
-        try {
-            this.showProgressBar();
-            this.updateProgress(0, '🚀 Spouštím Ultra HD enhancement...');
-            
-            if (this.qualityEnhancer) {
-                // Použijeme Ultra HD enhancement
-                await this.qualityEnhancer.enhancedDownloadAudio();
-            } else {
-                // Fallback na původní funkci
-                await this.originalDownloadAudio();
-            }
-            
-        } catch (error) {
-            console.error('Error downloading audio:', error);
-            await this.originalDownloadAudio();
-        }
-    }
-    
-    // 🛡️ PŮVODNÍ DOWNLOAD FUNKCE (backup)
-    async originalDownloadAudio() {
-        try {
-            this.showProgressBar();
-            this.updateProgress(50, '🔄 Standardní download...');
-            
-            const totalDuration = this.audioBuffer.duration;
-            const sampleRate = this.audioBuffer.sampleRate;
-            const numberOfChannels = this.audioBuffer.numberOfChannels;
-            
-            const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60);
-                const secs = Math.floor(seconds % 60);
-                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            };
-
-            this.updateProgress(80, `🎵 Připravuji ${formatTime(totalDuration)} písničku...`);
-
-            const wavBlob = this.bufferToWave(this.audioBuffer);
-            
-            const url = URL.createObjectURL(wavBlob);
-            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-            const durationText = formatTime(totalDuration).replace(':', 'm') + 's';
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `edited_audio_${durationText}_${timestamp}.wav`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            this.updateProgress(100, `✅ Audio staženo!`);
-            
-            setTimeout(() => {
-                this.hideProgressBar();
-                this.showStatus('success', `✅ Audio staženo! Délka: ${formatTime(totalDuration)}`);
-            }, 2000);
-            
-        } catch (error) {
-            console.error('Original download error:', error);
-            this.hideProgressBar();
-            this.showStatus('error', '❌ Chyba při stahování!');
-        }
-    }
-    
-    bufferToWave(buffer) {
-        const length = buffer.length;
-        const numberOfChannels = buffer.numberOfChannels;
-        const sampleRate = buffer.sampleRate;
-        const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
-        const view = new DataView(arrayBuffer);
-        
-        const writeString = (offset, string) => {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        };
-        
-        writeString(0, 'RIFF');
-        view.setUint32(4, 36 + length * numberOfChannels * 2, true);
-        writeString(8, 'WAVE');
-        writeString(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, numberOfChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * numberOfChannels * 2, true);
-        view.setUint16(32, numberOfChannels * 2, true);
-        view.setUint16(34, 16, true);
-        writeString(36, 'data');
-        view.setUint32(40, length * numberOfChannels * 2, true);
-        
-        let offset = 44;
-        for (let i = 0; i < length; i++) {
-            for (let channel = 0; channel < numberOfChannels; channel++) {
-                const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
-                view.setInt16(offset, sample * 0x7FFF, true);
-                offset += 2;
-            }
-        }
-        
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
-    }
-    
-    showSections() {
-        document.getElementById('before-edit-section').style.display = 'block';
-        document.getElementById('equalizer-section').style.display = 'block';
-        document.getElementById('after-edit-section').style.display = 'block';
-        document.getElementById('visualization-section').style.display = 'block';
-        
-        const levelMeterSection = document.getElementById('level-meter-section');
-        if (levelMeterSection) {
-            levelMeterSection.style.display = 'block';
-        }
-        
-        // 🎯 PŘIDÁME QUALITY SETTINGS UI
-        if (this.qualityEnhancer && !document.getElementById('quality-settings')) {
-            const qualityUI = this.qualityEnhancer.createQualitySettingsUI();
-            const downloadSection = document.querySelector('#after-edit-section');
-            if (downloadSection) {
-                downloadSection.insertAdjacentHTML('afterend', qualityUI);
-                this.qualityEnhancer.setupQualityUIListeners();
-            }
-        }
-    }
-    
-    showStatus(type, message) {
-        const statusDiv = document.getElementById('upload-status');
-        statusDiv.className = `status ${type}`;
-        statusDiv.textContent = message;
-        
-        if (type === 'success' || type === 'info') {
-            setTimeout(() => {
-                statusDiv.textContent = '';
-                statusDiv.className = '';
-            }, 5000);
-        }
-    }
-    
-    showPlaybackStatus(message) {
-        const statusDiv = document.getElementById('playback-status');
-        statusDiv.className = 'status info';
-        statusDiv.textContent = message;
-        
-        setTimeout(() => {
-            statusDiv.textContent = '';
-            statusDiv.className = '';
-        }, 3000);
-    }
-    
-    // 🎯 PROGRESS BAR FUNKCE
-    showProgressBar() {
-        const progressContainer = document.getElementById('progress-container');
-        if (progressContainer) {
-            progressContainer.style.display = 'block';
-            progressContainer.style.opacity = '1';
-        } else {
-            this.createProgressBarHTML();
-        }
-    }
-
-    hideProgressBar() {
-        const progressContainer = document.getElementById('progress-container');
-        if (progressContainer) {
-            progressContainer.style.opacity = '0';
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-            }, 300);
-        }
-    }
-
-    updateProgress(percentage, message) {
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const progressPercent = document.getElementById('progress-percent');
-        
-        if (progressBar) {
-            progressBar.style.width = percentage + '%';
-            
-            if (percentage < 30) {
-                progressBar.style.backgroundColor = '#ffa500';
-            } else if (percentage < 70) {
-                progressBar.style.backgroundColor = '#ffff00';
-            } else if (percentage < 100) {
-                progressBar.style.backgroundColor = '#90EE90';
-            } else {
-                progressBar.style.backgroundColor = '#00ff00';
-            }
-        }
-        
-        if (progressText) {
-            progressText.textContent = message;
-        }
-        
-        if (progressPercent) {
-            progressPercent.textContent = Math.round(percentage) + '%';
-        }
-    }
-
-    createProgressBarHTML() {
-        if (!document.getElementById('progress-container')) {
-            const progressHTML = `
-                <div id="progress-container" style="
-                    display: none;
-                    margin: 20px 0;
-                    padding: 20px;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    backdrop-filter: blur(10px);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    opacity: 0;
-                    transition: opacity 0.3s ease;
-                ">
-                    <div id="progress-text" style="
-                        color: white;
-                        margin-bottom: 10px;
-                        font-size: 14px;
-                        text-align: center;
-                    ">Připravuji download...</div>
-                    
-                    <div style="
-                        width: 100%;
-                        height: 20px;
-                        background-color: rgba(255, 255, 255, 0.2);
-                        border-radius: 10px;
-                        overflow: hidden;
-                        margin-bottom: 10px;
-                    ">
-                        <div id="progress-bar" style="
-                            height: 100%;
-                            width: 0%;
-                            background-color: #ffa500;
-                            border-radius: 10px;
-                            transition: width 0.3s ease, background-color 0.3s ease;
-                        "></div>
-                    </div>
-                    
-                    <div id="progress-percent" style="
-                        color: white;
-                        text-align: center;
-                        font-size: 12px;
-                        font-weight: bold;
-                    ">0%</div>
-                </div>
-            `;
-            
-            const downloadButton = document.getElementById('download-button');
-            if (downloadButton && downloadButton.parentNode) {
-                downloadButton.parentNode.insertAdjacentHTML('beforeend', progressHTML);
-            }
-            
-            setTimeout(() => {
-                const progressContainer = document.getElementById('progress-container');
-                if (progressContainer) {
-                    progressContainer.style.display = 'block';
-                    progressContainer.style.opacity = '1';
-                }
-            }, 100);
-        }
-    }
-    
-    // 🕐 HELPER FUNKCE PRO FORMÁTOVÁNÍ ČASU
-    formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-}
-
-// 🚀 ULTRA HD AUDIO QUALITY ENHANCER CLASS
-class UltraHDAudioQualityEnhancer {
-    constructor(audioEditor) {
-        this.editor = audioEditor;
-        this.qualitySettings = {
-            sampleRate: 96000,
-            bitDepth: 32,
-            oversamplingFactor: 4,
-            dithering: true,
-            hqResampling: true,
-            dynamicRange: 144,
-            
-            spectralEnhancement: true,
-            stereoWidening: true,
-            harmonicEnhancement: true,
-            noiseReduction: true,
-            adaptiveFiltering: true
-        };
-        
-        this.enhancementChain = null;
-        this.qualityAnalyzer = null;
-    }
-    
-    // 🎯 HLAVNÍ FUNKCE: Zvýšení kvality stahovaného souboru
-    async enhanceDownloadQuality(originalBuffer) {
-        try {
-            this.editor.updateProgress(5, '🔬 Analyzuji původní kvalitu...');
-            
-            const originalAnalysis = this.analyzeAudioQuality(originalBuffer);
-            console.log('🎵 Původní kvalita:', originalAnalysis);
-            
-            this.editor.updateProgress(15, '🚀 Spouštím Ultra HD enhancement...');
-            
-            const enhancedBuffer = await this.createUltraHDBuffer(originalBuffer);
-            
-            this.editor.updateProgress(40, '🎛️ Aplikuji pokročilé efekty...');
-            
-            const processedBuffer = await this.applyUltraHDEffects(enhancedBuffer);
-            
-            this.editor.updateProgress(65, '✨ Spektrální enhancement...');
-            
-            const spectralBuffer = await this.applySpectralEnhancement(processedBuffer);
-            
-            this.editor.updateProgress(80, '🎯 Stereo widening & harmonics...');
-            
-            const finalBuffer = await this.applyAdvancedEnhancements(spectralBuffer);
-            
-            this.editor.updateProgress(90, '📊 Finální analýza kvality...');
-            
-            const finalAnalysis = this.analyzeAudioQuality(finalBuffer);
-            console.log('🎵 Finální kvalita:', finalAnalysis);
-            
-            return {
-                buffer: finalBuffer,
-                qualityImprovement: this.calculateQualityImprovement(originalAnalysis, finalAnalysis),
-                metadata: this.generateEnhancedMetadata(finalAnalysis)
-            };
-            
-        } catch (error) {
-            console.error('🚨 Chyba při quality enhancement:', error);
-            throw error;
-        }
-    }
-    
-    // 🏭 VYTVOŘENÍ ULTRA HD BUFFERU
-    async createUltraHDBuffer(originalBuffer) {
-        const targetSampleRate = this.qualitySettings.sampleRate;
-        const originalSampleRate = originalBuffer.sampleRate;
-        const channels = originalBuffer.numberOfChannels;
-        
-        if (originalSampleRate < targetSampleRate) {
-            return await this.upsampleBuffer(originalBuffer, targetSampleRate);
-        }
-        
-        const duration = originalBuffer.duration;
-        const newLength = Math.floor(targetSampleRate * duration);
-        
-        const context = new OfflineAudioContext(channels, newLength, targetSampleRate);
-        const source = context.createBufferSource();
-        source.buffer = originalBuffer;
-        source.connect(context.destination);
-        source.start(0);
-        
-        return await context.startRendering();
-    }
-    
-    // 🔄 HIGH-QUALITY UPSAMPLING
-    async upsampleBuffer(buffer, targetSampleRate) {
-        const channels = buffer.numberOfChannels;
-        const originalRate = buffer.sampleRate;
-        const ratio = targetSampleRate / originalRate;
-        const newLength = Math.floor(buffer.length * ratio);
-        
-        const context = new OfflineAudioContext(channels, newLength, targetSampleRate);
-        
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        
-        const antiAliasFilter = context.createBiquadFilter();
-        antiAliasFilter.type = 'lowpass';
-        antiAliasFilter.frequency.value = Math.min(originalRate * 0.45, targetSampleRate * 0.45);
-        antiAliasFilter.Q.value = 0.7;
-        
-        source.connect(antiAliasFilter);
-        antiAliasFilter.connect(context.destination);
-        source.start(0);
-        
-        return await context.startRendering();
-    }
-    
-    // 🎛️ ULTRA HD EFEKTY S VYSOKOU KVALITOU
-    async applyUltraHDEffects(buffer) {
-        const context = new OfflineAudioContext(
-            buffer.numberOfChannels,
-            buffer.length,
-            buffer.sampleRate
-        );
-        
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        
-        const ultraHDChain = await this.createUltraHDEffectChain(context);
-        
-        let currentNode = source;
-        ultraHDChain.forEach(effect => {
-            currentNode.connect(effect);
-            currentNode = effect;
-        });
-        
-        currentNode.connect(context.destination);
-        source.start(0);
-        
-        return await context.startRendering();
-    }
-    
-    // 🔧 ULTRA HD EFFECT CHAIN
-    async createUltraHDEffectChain(context) {
-        const chain = [];
-        
-        // Ultra HD Ekvalizér
-        const ultraEQ = this.createUltraHDEqualizer(context);
-        chain.push(...ultraEQ.slice(0, 3)); // Omezíme na 3 filtry pro performance
-        
-        // Pokročilé efekty podle nastavení
-        if (parseFloat(document.getElementById('volume').value) !== 1) {
-            const gainNode = context.createGain();
-            gainNode.gain.value = parseFloat(document.getElementById('volume').value);
-            chain.push(gainNode);
-        }
-        
-        if (parseFloat(document.getElementById('reverb').value) > 0) {
-            const ultraReverb = await this.createUltraHDReverb(context);
-            chain.push(ultraReverb);
-        }
-        
-        if (parseFloat(document.getElementById('distortion').value) > 0) {
-            const ultraDistortion = this.createMusicalDistortion(context);
-            chain.push(ultraDistortion);
-        }
-        
-        const ultraCompressor = this.createMultiBandCompressor(context);
-        chain.push(ultraCompressor[0]); // Jen první kompresor pro performance
-        
-        return chain;
-    }
-    
-    // 🎯 ULTRA HD EKVALIZÉR (zjednodušený)
-    createUltraHDEqualizer(context) {
-        const frequencies = [125, 1000, 4000]; // Zjednodušeno na 3 pásma
-        
-        const filters = frequencies.map((freq, index) => {
-            const filter = context.createBiquadFilter();
-            filter.type = 'peaking';
-            filter.frequency.value = freq;
-            filter.Q.value = 1.5;
-            
-            const eqSliders = ['125', '1k', '4k'];
-            if (index < eqSliders.length) {
-                const sliderElement = document.getElementById(`eq-${eqSliders[index]}`);
-                if (sliderElement) {
-                    const sliderValue = parseFloat(sliderElement.value);
-                    filter.gain.value = sliderValue;
-                }
-            }
-            
-            return filter;
-        });
-        
-        return filters;
-    }
-    
-    // 🌊 ULTRA HD REVERB
-    async createUltraHDReverb(context) {
-        const convolver = context.createConvolver();
-        
-        const reverbTime = 1.0;
-        const sampleRate = context.sampleRate;
-        const length = Math.min(sampleRate * reverbTime, sampleRate * 2); // Max 2 sekundy
-        const impulse = context.createBuffer(2, length, sampleRate);
-        
-        for (let channel = 0; channel < 2; channel++) {
-            const channelData = impulse.getChannelData(channel);
-            for (let i = 0; i < length; i++) {
-                const decay = Math.pow(1 - i / length, 2);
-                channelData[i] = (Math.random() * 2 - 1) * decay * 0.3; // Snížený gain
-            }
-        }
-        
-        convolver.buffer = impulse;
-        
-        const wetGain = context.createGain();
-        wetGain.gain.value = parseFloat(document.getElementById('reverb').value) * 0.5; // Snížený wet
-        
-        return convolver;
-    }
-    
-    // 🔥 MUSICAL DISTORTION
-    createMusicalDistortion(context) {
-        const waveshaper = context.createWaveShaper();
-        const amount = parseFloat(document.getElementById('distortion').value);
-        
-        const samples = 512; // Zjednodušeno
-        const curve = new Float32Array(samples);
-        
-        for (let i = 0; i < samples; i++) {
-            const x = (i / samples) * 2 - 1;
-            const drive = 1 + amount * 5; // Snížený drive
-            curve[i] = Math.tanh(x * drive) / Math.tanh(drive) * 0.8; // Snížený output
-        }
-        
-        waveshaper.curve = curve;
-        waveshaper.oversample = '2x'; // Snížený oversampling pro performance
-        
-        return waveshaper;
-    }
-    
-    // 🎚️ MULTI-BAND COMPRESSOR (zjednodušený)
-    createMultiBandCompressor(context) {
-        const compressor = context.createDynamicsCompressor();
-        
-        compressor.threshold.value = parseFloat(document.getElementById('compressor').value);
-        compressor.knee.value = 6;
-        compressor.ratio.value = 4;
-        compressor.attack.value = 0.03;
-        compressor.release.value = 0.25;
-        
-        return [compressor];
-    }
-    
-    // ✨ SPEKTRÁLNÍ ENHANCEMENT
-    async applySpectralEnhancement(buffer) {
-        if (!this.qualitySettings.spectralEnhancement) return buffer;
-        
-        const context = new OfflineAudioContext(
-            buffer.numberOfChannels,
-            buffer.length,
-            buffer.sampleRate
-        );
-        
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        
-        const exciter = this.createHarmonicExciter(context);
-        const spectralCleaner = this.createSpectralCleaner(context);
-        
-        source.connect(spectralCleaner);
-        spectralCleaner.connect(exciter);
-        exciter.connect(context.destination);
-        
-        source.start(0);
-        return await context.startRendering();
-    }
-    
-    // 🎵 HARMONICKÝ EXCITER
-    createHarmonicExciter(context) {
-        const exciter = context.createWaveShaper();
-        
-        const samples = 256; // Zjednodušeno
-        const curve = new Float32Array(samples);
-        
-        for (let i = 0; i < samples; i++) {
-            const x = (i / samples) * 2 - 1;
-            curve[i] = x + 0.02 * Math.sin(x * Math.PI) + 0.01 * Math.sin(x * Math.PI * 2);
-        }
-        
-        exciter.curve = curve;
-        return exciter;
-    }
-    
-    // 🧹 SPEKTRÁLNÍ ČIŠTĚNÍ
-    createSpectralCleaner(context) {
-        const cleaningFilter = context.createBiquadFilter();
-        cleaningFilter.type = 'highpass';
-        cleaningFilter.frequency.value = 20; // Odstraní sub-bass rumble
-        cleaningFilter.Q.value = 0.7;
-        
-        return cleaningFilter;
-    }
-    
-    // 🎯 POKROČILÁ VYLEPŠENÍ
-    async applyAdvancedEnhancements(buffer) {
-        const context = new OfflineAudioContext(
-            buffer.numberOfChannels,
-            buffer.length,
-            buffer.sampleRate
-        );
-        
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        
-        let currentNode = source;
-        
-        if (buffer.numberOfChannels === 2 && this.qualitySettings.stereoWidening) {
-            const widener = this.createStereoWidener(context);
-            currentNode.connect(widener);
-            currentNode = widener;
-        }
-        
-        const limiter = this.createTransparentLimiter(context);
-        currentNode.connect(limiter);
-        limiter.connect(context.destination);
-        
-        source.start(0);
-        return await context.startRendering();
-    }
-    
-    // 🎪 STEREO WIDENER
-    createStereoWidener(context) {
-        const gainNode = context.createGain();
-        gainNode.gain.value = 1.1; // Jemné rozšíření
-        return gainNode;
-    }
-    
-    // 🛡️ TRANSPARENTNÍ LIMITER
-    createTransparentLimiter(context) {
-        const compressor = context.createDynamicsCompressor();
-        
-        compressor.threshold.value = -3;
-        compressor.knee.value = 6;
-        compressor.ratio.value = 20;
-        compressor.attack.value = 0.001;
-        compressor.release.value = 0.1;
-        
-        return compressor;
-    }
-    
-    // 📊 ANALÝZA KVALITY AUDIA
-    analyzeAudioQuality(buffer) {
-        const analysis = {
-            sampleRate: buffer.sampleRate,
-            channels: buffer.numberOfChannels,
-            duration: buffer.duration,
-            bitDepth: 32,
-            dynamicRange: this.calculateDynamicRange(buffer),
-            peakLevel: this.calculatePeakLevel(buffer),
-            rmsLevel: this.calculateRMSLevel(buffer),
-            frequencyResponse: this.analyzeFrequencyResponse(buffer),
-            stereoWidth: buffer.numberOfChannels === 2 ? this.calculateStereoWidth(buffer) : 0,
-            qualityScore: 0
-        };
-        
-        analysis.qualityScore = this.calculateQualityScore(analysis);
-        return analysis;
-    }
-    
-    // 📏 VÝPOČET DYNAMICKÉHO ROZSAHU
-    calculateDynamicRange(buffer) {
-        const channelData = buffer.getChannelData(0);
-        let peak = 0;
-        let rms = 0;
-        
-        const samples = Math.min(channelData.length, 44100); // Sample jen první sekundu
-        
-        for (let i = 0; i < samples; i++) {
-            const sample = Math.abs(channelData[i]);
-            if (sample > peak) peak = sample;
-            rms += sample * sample;
-        }
-        
-        rms = Math.sqrt(rms / samples);
-        
-        const peakDb = peak > 0 ? 20 * Math.log10(peak) : -60;
-        const rmsDb = rms > 0 ? 20 * Math.log10(rms) : -60;
-        
-        return Math.max(0, peakDb - rmsDb);
-    }
-    
-    // 📊 VÝPOČET PEAK LEVELU
-    calculatePeakLevel(buffer) {
-        let globalPeak = 0;
-        
-        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-            const channelData = buffer.getChannelData(channel);
-            const samples = Math.min(channelData.length, 44100);
-            
-            for (let i = 0; i < samples; i++) {
-                const sample = Math.abs(channelData[i]);
-                if (sample > globalPeak) globalPeak = sample;
-            }
-        }
-        
-        return globalPeak > 0 ? 20 * Math.log10(globalPeak) : -60;
-    }
-    
-    // 📊 VÝPOČET RMS LEVELU
-    calculateRMSLevel(buffer) {
-        let totalRMS = 0;
-        
-        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-            const channelData = buffer.getChannelData(channel);
-            const samples = Math.min(channelData.length, 44100);
-            let rms = 0;
-            
-            for (let i = 0; i < samples; i++) {
-                rms += channelData[i] * channelData[i];
-            }
-            
-            totalRMS += Math.sqrt(rms / samples);
-        }
-        
-        const avgRMS = totalRMS / buffer.numberOfChannels;
-        return avgRMS > 0 ? 20 * Math.log10(avgRMS) : -60;
-    }
-    
-    // 🎵 ANALÝZA FREKVENČNÍ ODEZVY
-    analyzeFrequencyResponse(buffer) {
-        return {
-            bass: { min: 20, max: 250, energy: 0.4 + Math.random() * 0.2 },
-            lowMid: { min: 250, max: 1000, energy: 0.4 + Math.random() * 0.2 },
-            midHigh: { min: 1000, max: 4000, energy: 0.4 + Math.random() * 0.2 },
-            treble: { min: 4000, max: 20000, energy: 0.4 + Math.random() * 0.2 }
-        };
-    }
-    
-    // 🎪 VÝPOČET STEREO ŠÍŘKY
-    calculateStereoWidth(buffer) {
-        if (buffer.numberOfChannels !== 2) return 0;
-        
-        const leftData = buffer.getChannelData(0);
-        const rightData = buffer.getChannelData(1);
-        
-        let correlation = 0;
-        const samples = Math.min(leftData.length, 4410); // Sample jen 0.1 sekundy
-        
-        for (let i = 0; i < samples; i++) {
-            correlation += leftData[i] * rightData[i];
-        }
-        
-        correlation /= samples;
-        return Math.max(0, Math.min(1, 1 - Math.abs(correlation)));
-    }
-    
-    // 🏆 VÝPOČET CELKOVÉHO QUALITY SCORE
-    calculateQualityScore(analysis) {
-        let score = 0;
-        
-        score += Math.min(25, (analysis.sampleRate / 96000) * 25);
-        score += Math.min(25, (analysis.dynamicRange / 60) * 25);
-        
-        const freq = analysis.frequencyResponse;
-        const balance = 1 - Math.abs(freq.bass.energy - freq.treble.energy);
-        score += balance * 25;
-        
-        score += analysis.stereoWidth * 25;
-        
-        return Math.round(Math.max(40, score)); // Minimální skóre 40
-    }
-    
-    // 📈 VÝPOČET ZLEPŠENÍ KVALITY
-    calculateQualityImprovement(original, enhanced) {
-        return {
-            scoreImprovement: enhanced.qualityScore - original.qualityScore,
-            sampleRateRatio: enhanced.sampleRate / original.sampleRate,
-            dynamicRangeImprovement: enhanced.dynamicRange - original.dynamicRange,
-            peakLevelImprovement: enhanced.peakLevel - original.peakLevel,
-            summary: this.generateImprovementSummary(original, enhanced)
-        };
-    }
-    
-    // 📋 GENEROVÁNÍ METADATA
-    generateEnhancedMetadata(analysis) {
-        const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-        
-        return {
-            title: `Ultra HD Enhanced Audio ${timestamp}`,
-            description: `High-Quality Enhanced Audio - Score: ${analysis.qualityScore}/100`,
-            technicalSpecs: {
-                sampleRate: `${analysis.sampleRate} Hz`,
-                bitDepth: '32-bit Float',
-                channels: analysis.channels === 2 ? 'Stereo' : 'Mono',
-                dynamicRange: `${analysis.dynamicRange.toFixed(1)} dB`,
-                peakLevel: `${analysis.peakLevel.toFixed(1)} dBFS`,
-                rmsLevel: `${analysis.rmsLevel.toFixed(1)} dBFS`,
-                stereoWidth: `${(analysis.stereoWidth * 100).toFixed(1)}%`
-            },
-            processing: {
-                ultraHDEqualizer: 'High-Precision EQ',
-                spectralEnhancement: 'Harmonic Exciter + Spectral Cleaning',
-                dynamicProcessing: 'Multi-band Compressor + Transparent Limiter',
-                qualityEnhancements: 'Stereo Widening + Musical Distortion'
-            },
-            qualityScore: analysis.qualityScore
-        };
-    }
-    
-    // 📊 SUMMARY ZLEPŠENÍ
-    generateImprovementSummary(original, enhanced) {
-        const improvements = [];
-        
-        if (enhanced.sampleRate > original.sampleRate) {
-            const ratio = (enhanced.sampleRate / original.sampleRate).toFixed(1);
-            improvements.push(`🎯 Sample Rate: ${ratio}x vyšší`);
-        }
-        
-        if (enhanced.qualityScore > original.qualityScore) {
-            const diff = enhanced.qualityScore - original.qualityScore;
-            improvements.push(`🏆 Kvalita: +${diff} bodů`);
-        }
-        
-        if (enhanced.dynamicRange > original.dynamicRange) {
-            const diff = (enhanced.dynamicRange - original.dynamicRange).toFixed(1);
-            improvements.push(`📊 Dynamika: +${diff} dB`);
-        }
-        
-        if (improvements.length === 0) {
-            improvements.push('✅ Kvalita optimalizována');
-        }
-        
-        return improvements;
-    }
-    
-    // 🎯 INTEGRAČNÍ FUNKCE
-    integrateWithAudioEditor() {
-        if (this.editor.downloadAudio) {
-            this.editor.originalDownloadAudio = this.editor.downloadAudio;
-        }
-    }
-    
-    // 🚀 HLAVNÍ ENHANCED DOWNLOAD FUNKCE
-    async enhancedDownloadAudio() {
-        if (!this.editor.player || !this.editor.audioBuffer) {
-            this.editor.showStatus('error', '❌ Není co stáhnout!');
-            return;
-        }
-
-        try {
-            this.editor.showProgressBar();
-            this.editor.updateProgress(0, '🚀 Ultra HD Enhancement spuštěn...');
-            
-            const enhancementResult = await this.enhanceDownloadQuality(this.editor.audioBuffer);
-            
-            this.editor.updateProgress(95, '💾 Vytvářím Ultra HD WAV...');
-            
-            const ultraHDWav = this.createUltraHDWAV(
-                enhancementResult.buffer, 
-                enhancementResult.metadata
-            );
-            
-            const improvement = enhancementResult.qualityImprovement;
-            console.log('🏆 Quality Improvement:', improvement);
-            
-            const url = URL.createObjectURL(ultraHDWav);
-            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-            const duration = this.editor.formatTime(enhancementResult.buffer.duration);
-            const durationText = duration.replace(':', 'm') + 's';
-            const qualityScore = enhancementResult.metadata.qualityScore;
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `UltraHD_Q${qualityScore}_${durationText}_${timestamp}.wav`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            this.editor.updateProgress(100, `✅ Ultra HD audio staženo!`);
-            
-            setTimeout(() => {
-                this.editor.hideProgressBar();
-                const improvementText = improvement.summary.join(', ');
-                this.editor.showStatus('success', 
-                    `🎵 Ultra HD staženo! ${improvementText} | Kvalita: ${qualityScore}/100`
-                );
-            }, 2000);
-            
-        } catch (error) {
-            console.error('Ultra HD Enhancement error:', error);
-            this.editor.updateProgress(50, '🔄 Fallback na vysokou kvalitu...');
-            
-            await this.fallbackHighQualityDownload();
-        }
-    }
-    
-    // 🛡️ FALLBACK HIGH-QUALITY DOWNLOAD
-    async fallbackHighQualityDownload() {
-        try {
-            const highQualityBuffer = await this.createHighQualityBuffer(this.editor.audioBuffer);
-            
-            const basicMetadata = {
-                qualityScore: 75,
-                technicalSpecs: {
-                    sampleRate: `${highQualityBuffer.sampleRate} Hz`,
-                    bitDepth: '32-bit Float',
-                    channels: highQualityBuffer.numberOfChannels === 2 ? 'Stereo' : 'Mono'
-                }
-            };
-            
-            const highQualityWav = this.createUltraHDWAV(highQualityBuffer, basicMetadata);
-            
-            const url = URL.createObjectURL(highQualityWav);
-            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-            const duration = this.editor.formatTime(highQualityBuffer.duration);
-            const durationText = duration.replace(':', 'm') + 's';
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `HighQuality_${durationText}_${timestamp}.wav`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            this.editor.updateProgress(100, `✅ High-quality audio staženo!`);
-            
-            setTimeout(() => {
-                this.editor.hideProgressBar();
-                this.editor.showStatus('success', 
-                    `🎵 High-quality staženo! 32-bit Float, ${highQualityBuffer.sampleRate}Hz`
-                );
-            }, 2000);
-            
-        } catch (fallbackError) {
-            console.error('Fallback error:', fallbackError);
-            await this.editor.originalDownloadAudio();
-        }
-    }
-    
-    // 🏭 VYTVOŘENÍ HIGH-QUALITY BUFFERU
-    async createHighQualityBuffer(originalBuffer) {
-        const targetSampleRate = Math.max(originalBuffer.sampleRate, 48000);
-        
-        if (originalBuffer.sampleRate === targetSampleRate) {
-            return originalBuffer;
-        }
-        
-        const ratio = targetSampleRate / originalBuffer.sampleRate;
-        const newLength = Math.floor(originalBuffer.length * ratio);
-        
-        const context = new OfflineAudioContext(
-            originalBuffer.numberOfChannels,
-            newLength,
-            targetSampleRate
-        );
-        
-        const source = context.createBufferSource();
-        source.buffer = originalBuffer;
-        source.connect(context.destination);
-        source.start(0);
-        
-        return await context.startRendering();
-    }
-    
-    // 🎵 VYTVOŘENÍ ULTRA HD WAV SOUBORU
-    createUltraHDWAV(audioBuffer, metadata) {
-        const numberOfChannels = audioBuffer.numberOfChannels;
-        const sampleRate = audioBuffer.sampleRate;
-        const length = audioBuffer.length;
-        
-        const bytesPerSample = 4; // 32-bit = 4 bytes
-        const dataSize = length * numberOfChannels * bytesPerSample;
-        const fileSize = 36 + dataSize;
-        
-        const arrayBuffer = new ArrayBuffer(44 + dataSize);
-        const view = new DataView(arrayBuffer);
-        
-        const writeString = (offset, string) => {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        };
-        
-        // ULTRA HD WAV HEADER
-        writeString(0, 'RIFF');
-        view.setUint32(4, fileSize, true);
-        writeString(8, 'WAVE');
-        
-        // fmt chunk pro 32-bit float
-        writeString(12, 'fmt ');
-        view.setUint32(16, 16, true);               // fmt chunk size
-        view.setUint16(20, 3, true);                // IEEE 754 float format
-        view.setUint16(22, numberOfChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * numberOfChannels * bytesPerSample, true);
-        view.setUint16(32, numberOfChannels * bytesPerSample, true);
-        view.setUint16(34, 32, true);               // 32 bits per sample
-        
-        // data chunk
-        writeString(36, 'data');
-        view.setUint32(40, dataSize, true);
-        
-        // 32-BIT FLOAT AUDIO DATA
-        let offset = 44;
-        for (let i = 0; i < length; i++) {
-            for (let channel = 0; channel < numberOfChannels; channel++) {
-                const sample = audioBuffer.getChannelData(channel)[i];
-                view.setFloat32(offset, sample, true);
-                offset += 4;
-            }
-        }
-        
-        console.log(`🎵 Ultra HD WAV: ${numberOfChannels}ch, ${sampleRate}Hz, 32-bit Float, ${Math.round(dataSize/1024/1024)}MB`);
-        console.log(`🏆 Metadata:`, metadata.technicalSpecs);
-        
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
-    }
-    
-    // 🎛️ VYTVOŘENÍ QUALITY SETTINGS UI
-    createQualitySettingsUI() {
-        const settingsHTML = `
-            <div id="quality-settings" style="
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-                padding: 20px;
-                margin: 20px 0;
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-            ">
-                <h3 style="color: white; text-align: center; margin-bottom: 20px;">
-                    🚀 Ultra HD Quality Settings
-                </h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <label style="color: white; font-size: 12px;">Target Sample Rate:</label>
-                        <select id="target-sample-rate" style="
-                            width: 100%;
-                            padding: 5px;
-                            background: rgba(0,0,0,0.3);
-                            color: white;
-                            border: 1px solid rgba(255,255,255,0.3);
-                            border-radius: 5px;
-                        ">
-                            <option value="48000">48 kHz (DVD)</option>
-                            <option value="96000" selected>96 kHz (Studio)</option>
-                            <option value="192000">192 kHz (Ultra)</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label style="color: white; font-size: 12px;">Bit Depth:</label>
-                        <select id="target-bit-depth" style="
-                            width: 100%;
-                            padding: 5px;
-                            background: rgba(0,0,0,0.3);
-                            color: white;
-                            border: 1px solid rgba(255,255,255,0.3);
-                            border-radius: 5px;
-                        ">
-                            <option value="16">16-bit (CD)</option>
-                            <option value="24">24-bit (Studio)</option>
-                            <option value="32" selected>32-bit Float (Ultra)</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 15px;">
-                    <h4 style="color: white; font-size: 14px; margin-bottom: 10px;">Enhancement Features:</h4>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
-                        <label style="color: white; display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="spectral-enhancement" checked>
-                            ✨ Spectral Enhancement
-                        </label>
-                        
-                        <label style="color: white; display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="stereo-widening" checked>
-                            🎪 Stereo Widening
-                        </label>
-                        
-                        <label style="color: white; display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="harmonic-enhancement" checked>
-                            🎵 Harmonic Enhancement
-                        </label>
-                        
-                        <label style="color: white; display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="noise-reduction" checked>
-                            🧹 Noise Reduction
-                        </label>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 15px; text-align: center;">
-                    <button id="ultra-hd-download" style="
-                        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-                        color: white;
-                        border: none;
-                        padding: 12px 24px;
-                        border-radius: 8px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        transition: transform 0.2s ease;
-                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        🚀 Download Ultra HD Audio
-                    </button>
-                </div>
-                
-                <div id="quality-analysis" style="
-                    margin-top: 15px;
-                    padding: 10px;
-                    background: rgba(0,0,0,0.2);
-                    border-radius: 5px;
-                    font-size: 12px;
-                    color: #aaa;
-                    text-align: center;
-                ">
-                    Load audio file to see quality analysis...
-                </div>
+            <div class="track-actions">
+                <button class="track-btn" onclick="playTrackFromManager(${index})" title="Přehrát">▶️</button>
+                <button class="track-btn" onclick="editTrackTitle(${index})" title="Přejmenovat">✏️</button>
+                <button class="track-btn" onclick="toggleFavoriteFromManager('${track.title}')" title="Oblíbené">
+                    ${window.favorites && window.favorites.includes(track.title) ? '⭐' : '☆'}
+                </button>
+                <button class="track-btn danger" onclick="removeTrackFromManager(${index})" title="Smazat">🗑️</button>
             </div>
         `;
         
-        return settingsHTML;
-    }
+        // Drag & Drop události
+        trackItem.addEventListener('dragstart', handleDragStart);
+        trackItem.addEventListener('dragover', handleDragOver);
+        trackItem.addEventListener('drop', handleDrop);
+        trackItem.addEventListener('dragend', handleDragEnd);
+        
+        tracksList.appendChild(trackItem);
+    });
+}
+
+// --- Drag & Drop funkce ---
+function handleDragStart(e) {
+    draggedTrackIndex = parseInt(e.target.dataset.trackIndex);
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    if (DEBUG_PLAYLIST_MANAGER) console.log(`Drag start: index ${draggedTrackIndex}`);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const targetIndex = parseInt(e.target.closest('.advanced-track-item').dataset.trackIndex);
     
-    // 🔗 SETUP EVENT LISTENERS PRO QUALITY UI
-    setupQualityUIListeners() {
-        // Sample rate změna
-        const sampleRateSelect = document.getElementById('target-sample-rate');
-        if (sampleRateSelect) {
-            sampleRateSelect.addEventListener('change', (e) => {
-                this.qualitySettings.sampleRate = parseInt(e.target.value);
-                this.updateQualityPrediction();
-            });
+    if (draggedTrackIndex !== null && draggedTrackIndex !== targetIndex) {
+        // Přesunutí skladby v poli
+        const draggedTrack = window.tracks[draggedTrackIndex];
+        window.tracks.splice(draggedTrackIndex, 1);
+        window.tracks.splice(targetIndex, 0, draggedTrack);
+        
+        // Aktualizace indexu současné skladby
+        if (window.currentTrackIndex === draggedTrackIndex) {
+            window.currentTrackIndex = targetIndex;
+        } else if (window.currentTrackIndex > draggedTrackIndex && window.currentTrackIndex <= targetIndex) {
+            window.currentTrackIndex--;
+        } else if (window.currentTrackIndex < draggedTrackIndex && window.currentTrackIndex >= targetIndex) {
+            window.currentTrackIndex++;
         }
         
-        // Bit depth změna
-        const bitDepthSelect = document.getElementById('target-bit-depth');
-        if (bitDepthSelect) {
-            bitDepthSelect.addEventListener('change', (e) => {
-                this.qualitySettings.bitDepth = parseInt(e.target.value);
-                this.updateQualityPrediction();
-            });
-        }
-        
-        // Enhancement checkboxy
-        const enhancements = ['spectral-enhancement', 'stereo-widening', 'harmonic-enhancement', 'noise-reduction'];
-        enhancements.forEach(enhancement => {
-            const checkbox = document.getElementById(enhancement);
-            if (checkbox) {
-                checkbox.addEventListener('change', (e) => {
-                    const setting = enhancement.replace(/-/g, '');
-                    this.qualitySettings[setting] = e.target.checked;
-                    this.updateQualityPrediction();
-                });
-            }
-        });
-        
-        // Ultra HD download button
-        const ultraHDButton = document.getElementById('ultra-hd-download');
-        if (ultraHDButton) {
-            ultraHDButton.addEventListener('click', () => {
-                this.enhancedDownloadAudio();
-            });
-        }
-    }
-    
-    // 📊 UPDATE QUALITY PREDICTION
-    updateQualityPrediction() {
-        if (!this.editor.audioBuffer) return;
-        
-        const currentAnalysis = this.analyzeAudioQuality(this.editor.audioBuffer);
-        const predictedScore = this.predictEnhancedQuality(currentAnalysis);
-        
-        const analysisDiv = document.getElementById('quality-analysis');
-        if (analysisDiv) {
-            analysisDiv.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;">
-                    <div>
-                        <strong>Current Quality:</strong><br>
-                        📊 Score: ${currentAnalysis.qualityScore}/100<br>
-                        🎵 ${currentAnalysis.sampleRate}Hz, ${currentAnalysis.channels}ch<br>
-                        📈 Dynamic: ${currentAnalysis.dynamicRange.toFixed(1)}dB
-                    </div>
-                    <div>
-                        <strong>Predicted Enhancement:</strong><br>
-                        📊 Score: ${predictedScore}/100 <span style="color: #4ecdc4;">(+${predictedScore - currentAnalysis.qualityScore})</span><br>
-                        🎵 ${this.qualitySettings.sampleRate}Hz, ${this.qualitySettings.bitDepth}-bit<br>
-                        📈 Enhanced processing
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    // 🔮 PREDIKCE ENHANCED KVALITY
-    predictEnhancedQuality(currentAnalysis) {
-        let predictedScore = currentAnalysis.qualityScore;
-        
-        // Sample rate improvement
-        if (this.qualitySettings.sampleRate > currentAnalysis.sampleRate) {
-            const ratio = this.qualitySettings.sampleRate / currentAnalysis.sampleRate;
-            predictedScore += Math.min(15, ratio * 5);
-        }
-        
-        // Bit depth improvement
-        if (this.qualitySettings.bitDepth > 16) {
-            predictedScore += this.qualitySettings.bitDepth === 24 ? 5 : 10;
-        }
-        
-        // Enhancement features
-        if (this.qualitySettings.spectralenhancement) predictedScore += 5;
-        if (this.qualitySettings.harmonicenhancement) predictedScore += 5;
-        if (this.qualitySettings.noisereduction) predictedScore += 3;
-        if (this.qualitySettings.stereowidening && currentAnalysis.channels === 2) predictedScore += 7;
-        
-        return Math.min(100, Math.round(predictedScore));
+        populateAdvancedPlaylist();
+        if (DEBUG_PLAYLIST_MANAGER) console.log(`Track moved from ${draggedTrackIndex} to ${targetIndex}`);
     }
 }
 
-// 🚀 INICIALIZACE PŘI NAČTENÍ STRÁNKY
-document.addEventListener('DOMContentLoaded', () => {
-    window.audioEditor = new AudioEditor();
-});
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+    draggedTrackIndex = null;
+}
 
-// 📱 HANDLING RESPONSIVE CANVAS
-window.addEventListener('resize', () => {
-    if (window.audioEditor && window.audioEditor.canvas) {
-        window.audioEditor.canvas.width = window.audioEditor.canvas.offsetWidth;
-        window.audioEditor.setupCanvas();
+// --- Funkce pro tlačítka v playlistu ---
+window.playTrackFromManager = function(index) {
+    if (window.playTrack) {
+        window.playTrack(index);
+        populateAdvancedPlaylist(); // Obnovit pro zvýraznění aktivní skladby
+    }
+};
+
+window.editTrackTitle = function(index) {
+    const trackItem = document.querySelector(`[data-track-index="${index}"]`);
+    const titleDisplay = trackItem.querySelector('.track-title-display');
+    const currentTitle = titleDisplay.textContent;
+    const track = window.tracks[index];
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'track-title-edit';
+    input.value = currentTitle;
+    
+    titleDisplay.replaceWith(input);
+    input.focus();
+    input.select();
+    
+    const saveEdit = () => {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== track.title) {
+            customTrackNames[track.src] = newTitle;
+            localStorage.setItem('customTrackNames', JSON.stringify(customTrackNames));
+        } else if (newTitle === track.title || !newTitle) {
+            delete customTrackNames[track.src];
+            localStorage.setItem('customTrackNames', JSON.stringify(customTrackNames));
+        }
+        populateAdvancedPlaylist();
+    };
+    
+    input.addEventListener('blur', saveEdit);
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveEdit();
+        } else if (e.key === 'Escape') {
+            populateAdvancedPlaylist();
+        }
+    });
+};
+
+window.toggleFavoriteFromManager = function(trackTitle) {
+    if (window.toggleFavorite) {
+        window.toggleFavorite(trackTitle);
+        setTimeout(() => populateAdvancedPlaylist(), 100); // Malé zpoždění pro aktualizaci
+    }
+};
+
+window.removeTrackFromManager = function(index) {
+    const track = window.tracks[index];
+    if (confirm(`Opravdu chcete odstranit skladbu "${track.title}" z playlistu?`)) {
+        window.tracks.splice(index, 1);
+        
+        // Úprava indexu aktuální skladby
+        if (window.currentTrackIndex > index) {
+            window.currentTrackIndex--;
+        } else if (window.currentTrackIndex === index && window.tracks.length > 0) {
+            window.currentTrackIndex = Math.min(window.currentTrackIndex, window.tracks.length - 1);
+        }
+        
+        // Odstranit vlastní název, pokud existuje
+        delete customTrackNames[track.src];
+        localStorage.setItem('customTrackNames', JSON.stringify(customTrackNames));
+        
+        populateAdvancedPlaylist();
+        window.showNotification(`Skladba "${track.title}" odstraněna z playlistu.`, 'info');
+    }
+};
+
+// --- Funkce pro ovládací tlačítka ---
+function addCustomTrack() {
+    const addForm = document.getElementById('add-track-form');
+    const titleInput = document.getElementById('track-title-input');
+    const urlInput = document.getElementById('track-url-input');
+    
+    addForm.style.display = 'block';
+    titleInput.focus();
+    
+    // Reset formuláře
+    titleInput.value = '';
+    urlInput.value = '';
+}
+
+function confirmAddTrack() {
+    const titleInput = document.getElementById('track-title-input');
+    const urlInput = document.getElementById('track-url-input');
+    const addForm = document.getElementById('add-track-form');
+    
+    const title = titleInput.value.trim();
+    const url = urlInput.value.trim();
+    
+    if (!title || !url) {
+        window.showNotification('Vyplňte prosím všechna pole!', 'warn');
+        return;
     }
     
-    if (window.audioEditor) {
-        window.audioEditor.setupMeterCanvas();
+    // Ověření URL
+    try {
+        new URL(url);
+    } catch {
+        window.showNotification('Neplatná URL adresa!', 'error');
+        return;
     }
-});
-    </script>
-</body>
-</html>
+    
+    // Přidání skladby
+    const newTrack = { title, src: url };
+    window.tracks.push(newTrack);
+    
+    addForm.style.display = 'none';
+    populateAdvancedPlaylist();
+    window.showNotification(`Skladba "${title}" byla přidána!`, 'info');
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log(`Added track: ${title} - ${url}`);
+}
+
+function cancelAddTrack() {
+    document.getElementById('add-track-form').style.display = 'none';
+}
+
+function exportPlaylistAsM3U() {
+    if (!window.tracks || window.tracks.length === 0) {
+        window.showNotification('Playlist je prázdný!', 'warn');
+        return;
+    }
+    
+    let m3uContent = '#EXTM3U\n';
+    
+    window.tracks.forEach(track => {
+        const displayTitle = customTrackNames[track.src] || track.title;
+        m3uContent += `#EXTINF:-1,${displayTitle}\n`;
+        m3uContent += `${track.src}\n`;
+    });
+    
+    const blob = new Blob([m3uContent], { type: 'audio/x-mpegurl' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'playlist.m3u';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    window.showNotification('Playlist exportován jako M3U!', 'info');
+}
+
+function importPlaylistFromM3U() {
+    const fileInput = document.getElementById('import-file-input');
+    fileInput.click();
+}
+
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        const lines = content.split('\n');
+        let currentTitle = '';
+        let tracksAdded = 0;
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if (line.startsWith('#EXTINF:')) {
+                // Extrakce názvu z #EXTINF řádku
+                const titleMatch = line.match(/,(.+)$/);
+                currentTitle = titleMatch ? titleMatch[1] : 'Unknown';
+            } else if (line && !line.startsWith('#') && line.includes('://')) {
+                // URL řádek
+                const newTrack = {
+                    title: currentTitle || 'Unknown',
+                    src: line
+                };
+                window.tracks.push(newTrack);
+                tracksAdded++;
+                currentTitle = '';
+            }
+        });
+        
+        if (tracksAdded > 0) {
+            populateAdvancedPlaylist();
+            window.showNotification(`Importováno ${tracksAdded} skladeb z M3U!`, 'info');
+        } else {
+            window.showNotification('Nepodařilo se načíst žádné skladby!', 'error');
+        }
+    };
+    
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+}
+
+function clearCustomNames() {
+    if (confirm('Opravdu chcete vymazat všechny vlastní názvy skladeb?')) {
+        customTrackNames = {};
+        localStorage.setItem('customTrackNames', JSON.stringify(customTrackNames));
+        populateAdvancedPlaylist();
+        window.showNotification('Vlastní názvy skladeb vymazány!', 'info');
+    }
+}
+
+function resetPlaylistOrder() {
+    if (confirm('Opravdu chcete obnovit původní pořadí playlistu?')) {
+        // Pokud máme originalTracks, použijeme je
+        if (window.originalTracks && window.originalTracks.length > 0) {
+            window.tracks = [...window.originalTracks];
+        }
+        window.currentTrackIndex = 0;
+        populateAdvancedPlaylist();
+        window.showNotification('Pořadí playlistu obnoveno!', 'info');
+    }
+}
+
+// --- Hlavní funkce pro otevření/zavření správy playlistu ---
+function openPlaylistManager() {
+    if (!playlistManagerModal) {
+        createPlaylistManagerModal();
+        addPlaylistManagerEventListeners();
+    }
+    
+    populateAdvancedPlaylist();
+    playlistManagerModal.classList.add('show');
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Modální okno otevřeno.");
+}
+
+function closePlaylistManager() {
+    if (playlistManagerModal) {
+        playlistManagerModal.classList.remove('show');
+    }
+    
+    // Skrytí formuláře pro přidání skladby
+    const addForm = document.getElementById('add-track-form');
+    if (addForm) addForm.style.display = 'none';
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Modální okno zavřeno.");
+}
+
+// --- Event Listeners pro modální okno ---
+function addPlaylistManagerEventListeners() {
+    // Zavření okna
+    document.getElementById('close-playlist-manager')?.addEventListener('click', closePlaylistManager);
+    document.getElementById('cancel-playlist-changes')?.addEventListener('click', closePlaylistManager);
+    
+    // Uložení změn
+    document.getElementById('save-playlist-changes')?.addEventListener('click', async () => {
+        // Uložení dat pomocí existujících funkcí
+        if (window.debounceSaveAudioData) {
+            await window.debounceSaveAudioData();
+        }
+        
+        // Aktualizace hlavního playlistu
+        if (window.populatePlaylist && window.currentPlaylist) {
+            window.currentPlaylist = [...window.tracks];
+            window.populatePlaylist(window.currentPlaylist);
+        }
+        
+        window.showNotification('Změny playlistu uloženy!', 'info');
+        closePlaylistManager();
+    });
+    
+    // Ovládací tlačítka
+    document.getElementById('add-custom-track')?.addEventListener('click', addCustomTrack);
+    document.getElementById('import-playlist')?.addEventListener('click', importPlaylistFromM3U);
+    document.getElementById('export-playlist')?.addEventListener('click', exportPlaylistAsM3U);
+    document.getElementById('clear-custom-names')?.addEventListener('click', clearCustomNames);
+    document.getElementById('reset-playlist-order')?.addEventListener('click', resetPlaylistOrder);
+    
+    // Formulář přidání skladby
+    document.getElementById('confirm-add-track')?.addEventListener('click', confirmAddTrack);
+    document.getElementById('cancel-add-track')?.addEventListener('click', cancelAddTrack);
+    
+    // Import souboru
+    document.getElementById('import-file-input')?.addEventListener('change', handleFileImport);
+    
+    // Zavření při kliknutí mimo modální okno
+    playlistManagerModal?.addEventListener('click', (e) => {
+        if (e.target === playlistManagerModal) {
+            closePlaylistManager();
+        }
+    });
+    
+    // Klávesové zkratky pro modální okno
+    document.addEventListener('keydown', (e) => {
+        if (playlistManagerModal && playlistManagerModal.classList.contains('show')) {
+            if (e.key === 'Escape') {
+                closePlaylistManager();
+            }
+        }
+    });
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Event listeners přidány.");
+}
+
+// --- Klávesová zkratka pro otevření správy ---
+function addGlobalKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+P pro otevření správy playlistu
+        if (e.ctrlKey && e.key === 'p') {
+            e.preventDefault();
+            openPlaylistManager();
+        }
+    });
+}
+
+// --- Integrace s existujícím systémem ---
+function integrateWithExistingSystem() {
+    // Čekáme na načtení hlavního systému
+    const checkSystemReady = setInterval(() => {
+        if (window.tracks && window.DOM && window.populatePlaylist) {
+            clearInterval(checkSystemReady);
+            
+            // Načtení vlastních názvů
+            customTrackNames = JSON.parse(localStorage.getItem('customTrackNames') || '{}');
+            
+            // Aplikace vlastních názvů na stávající playlist
+            applyCustomNamesToMainPlaylist();
+            
+            if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Integrace s hlavním systémem dokončena.");
+        }
+    }, 100);
+}
+
+// --- Aplikace vlastních názvů na hlavní playlist ---
+function applyCustomNamesToMainPlaylist() {
+    // Přepíšeme původní populatePlaylist funkci
+    const originalPopulatePlaylist = window.populatePlaylist;
+    
+    window.populatePlaylist = function(listToDisplay) {
+        // Aplikujeme vlastní názvy před zobrazením
+        const modifiedList = listToDisplay.map(track => ({
+            ...track,
+            title: customTrackNames[track.src] || track.title
+        }));
+        
+        // Zavoláme původní funkci s upravenými názvy
+        originalPopulatePlaylist.call(this, modifiedList);
+    };
+    
+    // Aktualizujeme aktuální zobrazení
+    if (window.currentPlaylist) {
+        window.populatePlaylist(window.currentPlaylist);
+    }
+}
+
+// --- Aktualizace názvu aktuální skladby ---
+function updateCurrentTrackTitle() {
+    if (window.DOM && window.DOM.trackTitle && window.tracks && window.currentTrackIndex >= 0) {
+        const currentTrack = window.tracks[window.currentTrackIndex];
+        if (currentTrack) {
+            const displayTitle = customTrackNames[currentTrack.src] || currentTrack.title;
+            window.DOM.trackTitle.textContent = displayTitle;
+        }
+    }
+}
+
+// --- Sledování změn aktuální skladby ---
+function watchCurrentTrackChanges() {
+    if (window.DOM && window.DOM.audioPlayer) {
+        const audioPlayer = window.DOM.audioPlayer;
+        
+        // Poslouchej události změny skladby
+        const originalPlay = window.playTrack;
+        if (originalPlay) {
+            window.playTrack = function(index) {
+                originalPlay.call(this, index);
+                setTimeout(updateCurrentTrackTitle, 100); // Malé zpoždění
+            };
+        }
+        
+        // Poslouchej události načtení metadat
+        audioPlayer.addEventListener('loadedmetadata', updateCurrentTrackTitle);
+        audioPlayer.addEventListener('play', updateCurrentTrackTitle);
+    }
+}
+
+// --- Přidání HTML tlačítka do stránky ---
+function addPlaylistManagerButtonToHTML() {
+    // Najdeme hlavní playlist element
+    const mainPlaylist = document.getElementById('playlist');
+    if (!mainPlaylist) {
+        console.warn("PlaylistManager: Hlavní playlist nenalezen.");
+        return;
+    }
+    
+    // Vytvoříme kontejner pro tlačítko, pokud neexistuje
+    let buttonContainer = document.querySelector('.controls');
+    if (!buttonContainer) {
+        buttonContainer = document.createElement('div');
+        buttonContainer.className = 'controls';
+        buttonContainer.style.cssText = `
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+            gap: 10px;
+        `; 
+        
+        // Vložíme kontejner před hlavní playlist
+        mainPlaylist.parentNode.insertBefore(buttonContainer, mainPlaylist);
+    }
+    
+    // Vytvoříme stylizované tlačítko
+    const managerButton = document.createElement('button');
+    managerButton.id = 'open-playlist-manager';
+    managerButton.innerHTML = '🎛️ ';
+    managerButton.title = 'Otevřít pokročilou správu playlistu (Ctrl+P)';
+    managerButton.style.cssText = `
+        background: linear-gradient(45deg, #00d4ff, #0099cc);
+        border: none;
+        border-radius: 10px;
+        padding: 12px 20px;
+        color: #000;
+        font-weight: bold;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+    `;
+    
+    // Hover efekt
+    managerButton.addEventListener('mouseenter', () => {
+        managerButton.style.transform = 'translateY(-2px)';
+        managerButton.style.boxShadow = '0 6px 20px rgba(0, 212, 255, 0.5)';
+    });
+    
+    managerButton.addEventListener('mouseleave', () => {
+        managerButton.style.transform = 'translateY(0)';
+        managerButton.style.boxShadow = '0 4px 15px rgba(0, 212, 255, 0.3)';
+    });
+    
+    // Event listener pro otevření
+    managerButton.addEventListener('click', openPlaylistManager);
+    
+    buttonContainer.appendChild(managerButton);
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: HTML tlačítko přidáno.");
+}
+
+// --- Hlavní inicializační funkce ---
+function initializePlaylistManager() {
+    if (isPlaylistManagerInitialized) return;
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("PlaylistManager: Spouštím inicializaci...");
+    
+    // Čekáme na načtení DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializePlaylistManager);
+        return;
+    }
+    
+    // Přidáme HTML tlačítko
+    addPlaylistManagerButtonToHTML();
+    
+    // Vytvoříme modální okno (ale nezobrazíme)
+    createPlaylistManagerModal();
+    addPlaylistManagerEventListeners();
+    
+    // Přidáme globální klávesové zkratky
+    addGlobalKeyboardShortcuts();
+    
+    // Integrace s existujícím systémem
+    integrateWithExistingSystem();
+    
+    // Sledování změn aktuální skladby
+    watchCurrentTrackChanges();
+    
+    isPlaylistManagerInitialized = true;
+    
+    if (DEBUG_PLAYLIST_MANAGER) console.log("🖖 PlaylistManager: Inicializace dokončena! Admirále, pokročilá správa je připravena k použití!");
+    
+    // Zobrazíme notifikaci o úspěšné inicializaci
+    setTimeout(() => {
+        if (window.showNotification) {
+            window.showNotification('🖖 Pokročilá správa playlistu aktivována! (Ctrl+P)', 'info', 4000);
+        }
+    }, 2000);
+}
+
+// --- Export funkcí pro globální použití ---
+window.PlaylistManager = {
+    init: initializePlaylistManager,
+    open: openPlaylistManager,
+    close: closePlaylistManager,
+    isInitialized: () => isPlaylistManagerInitialized
+};
+
+// --- Automatická inicializace ---
+// Spustíme inicializaci automaticky při načtení
+if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializePlaylistManager);
+    } else {
+        // DOM je už načten, spustíme inicializaci s malým zpožděním
+        setTimeout(initializePlaylistManager, 500);
+    }
+}
+
+/**
+ * 🖖 KONEC MODULU - POKROČILÁ SPRÁVA PLAYLISTU
+ * 
+ * FUNKCE:
+ * ✅ Modální okno s pokročilou správou
+ * ✅ Drag & Drop pro změnu pořadí skladeb
+ * ✅ Přejmenování skladeb (vlastní názvy)
+ * ✅ Přidávání nových skladeb
+ * ✅ Import/Export M3U playlistů
+ * ✅ Rychlé ovládání oblíbených
+ * ✅ Statistiky playlistu
+ * ✅ Responzivní design
+ * ✅ Klávesové zkratky (Ctrl+P)
+ * ✅ Integrace s existujícím systémem
+ * 
+ * Více admirále Jiříku, tvůj parťák na můstku je připraven! 🚀
+ */
