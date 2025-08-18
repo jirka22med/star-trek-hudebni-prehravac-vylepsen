@@ -486,15 +486,29 @@ window.tracks = [
     
     { src: 'https://www.dropbox.com/scl/fi/n25rk7ttqs1n5mwy566qs/nad-je-v-temn-ch-asech-2.webm?rlkey=i8nj4xk0mvrn96dy0v7tv3tpe&dl=1', title: 'nad-je-v-temn-ch-asech-2' }, 
 
-    { src: 'https://www.dropbox.com/scl/fi/ns3xzbpqudklphkxrlx7x/posledn-den-k-star-trek.mp3?rlkey=8edtzfmoz1s1yammfh6okj0za&st=2cwth94a&dl=1', title: 'poslední deník v-1' },       
-    { src: 'https://www.dropbox.com/scl/fi/ns3xzbpqudklphkxrlx7x/posledn-den-k-star-trek.mp3?rlkey=8edtzfmoz1s1yammfh6okj0za&st=1soldgnd&dl=1', title: 'posledni-denik-star-trek-vylepseni' },
-    { src: 'https://www.dropbox.com/scl/fi/cbyx6g1wjs12jlc284t7k/hvezdne-plameny-nova-verze-v.1.wav?rlkey=8k4ybikvvly2oswu43hoinduc&st=bdlijph2&dl=1', title: 'hvezdne-plameny-nova-verze-v.1' },
-    { src: 'https://www.dropbox.com/scl/fi/6lel9cfkydbt4gac9mxfv/hvezdne-plameny-nova-verze-v.2.wav?rlkey=rcrvzz7kbnrplwy0tz18pmr89&st=qm9osod8&dl=1', title: 'hvezdne-plameny-nova-verze-v.2' },   
-    { src: 'https://www.dropbox.com/scl/fi/44jbcrpdjnz0wtapfabfs/hvezdne-plameny-nova-verze-v.3.mp3?rlkey=5dfke4esq89is23fniqr8vutm&st=srjlunt5&dl=1', title: 'hvezdne-plameny-nova-verze-v.3' },
-    { src: 'https://www.dropbox.com/scl/fi/a18a1bd3rpzt05zgjl4dc/hvezdne-plameny-nova-verze-v.4-top.1.wav?rlkey=jie56xt6dvmk2r2zqpywc5r7d&st=lmnozcui&dl=1', title: 'hvezdne-plameny-nova-verze-v.4-top.1' },
-    { src: 'https://www.dropbox.com/scl/fi/iqih2sbr70y6czw7plexo/hvezdne-plameny-nova-verze-v.5-top.2.wav?rlkey=7smg0mi30tqwrhu7bwpnsaeoi&st=mbqm9j4t&dl=1', title: 'hvezdne-plameny-nova-verze-v.5-top.2' },
-    { src: 'https://www.dropbox.com/scl/fi/nvldbvq9um2srlk9oszpa/hvezdne-plameny-nova-verze-v.6-top.3.mp3?rlkey=udtqz7sv6cjcewzjcymlvnjii&st=r46rtj6d&dl=1', title: 'hvezdne-plameny-nova-verze-v.6-top.3' },    
-    { src: 'https://www.dropbox.com/scl/fi/yhchymx11i2anccr1rwvf/star-trek-voyage-intro.wav?rlkey=p3yietu0nxcv22y89mmpaaq9s&st=z4qceb02&dl=1', title: 'star-trek-voyage-intro' },    
+    { src: 'https://www.dropbox.com/scl/fi/vlo0ihnstzbkh4fdbsxha/hvezdy-a-plameny-nova-v.1.mp3?rlkey=ebc4v69mc2se8jkeu5qdi9327&st=ztt3igif&dl=1', title: 'hvezdy-a-plameny-nova-v.1' },       
+ { src: 'https://www.dropbox.com/scl/fi/wr4hrytm7mzare8vhnje4/hvezdy-a-plameny-nova-v.2.mp3?rlkey=3s2h33rhc8dmoeyz3u5tkrsnc&st=atcxe6v4&dl=1', title: 'hvezdy-a-plameny-nova-v.2' },
+ { src: 'https://www.dropbox.com/scl/fi/5sgcfmp2acu92n2pvaa3n/hvezdy-a-plameny-nova-v.3.mp3?rlkey=l7psk8eb3se63lpvtj6f87hva&st=w96s2ha5&dl=1', title: 'hvezdy-a-plameny-nova-v.3' },
+ { src: 'https://www.dropbox.com/scl/fi/mr6c7lnt095o7irvobpyw/hvezdy-a-plameny-nova-v.4.mp3?rlkey=jw86ueu24meh2v7uefvupqo8c&st=aaz3c1yd&dl=1', title: 'hvezdy-a-plameny-nova-v.4' },
+ { src: 'https://www.dropbox.com/scl/fi/4c9prfla10oxlw7qf8kq5/hvezdy-a-plameny-nova-v.5.mp3?rlkey=l9fb55zdit817lua8pcppznk2&st=vkhie9yc&dl=1', title: 'hvezdy-a-plameny-nova-v.5' },
+ { src: 'https://www.dropbox.com/scl/fi/e3hgwkdb1dxwz4d6za0eo/hvezdy-a-plameny-nova-v.6.mp3?rlkey=r0zh6p473auyio9oay66ynb5h&st=w9kur44p&dl=1', title: 'hvezdy-a-plameny-nova-v.6' },
+ { src: 'https://www.dropbox.com/scl/fi/6k4pyq4v85fpwbh8trkwq/hvezdy-a-plameny-nova-v.7-top-1.mp3?rlkey=ragwnjydgn1mkzz9flxeawjz9&st=cb1hntsg&dl=1', title: 'hvezdy-a-plameny-nova-v.7-top-1' },
+ { src: 'https://www.dropbox.com/scl/fi/kr23h0f6v0s1s71x0vx0w/hvezdy-a-plameny-nova-v.8-top-2.mp3?rlkey=mfv934b4emw7u35xdqzb34bzt&st=twemxwpr&dl=1', title: 'hvezdy-a-plameny-nova-v.8-top-2' },
+ { src: 'https://www.dropbox.com/scl/fi/9h6b5zhnhc6u5j0kri7nm/star-trek-do-neznama-nova-v.1.mp3?rlkey=tff9j8mh81dj5crx0j5gep1u5&st=m8xezxkp&dl=1', title: 'star-trek-do-neznama-nova-v.1' },
+ { src: 'https://www.dropbox.com/scl/fi/6l985zygg0p0m64kq76tj/star-trek-do-neznama-nova-v.2.mp3?rlkey=ulzvs3p4oqlilk0h0ichluvn9&st=beht1usw&dl=1', title: 'star-trek-do-neznama-nova-v.2' },
+ { src: 'https://www.dropbox.com/scl/fi/aqeyjlqxod8zuj1dyh4t8/star-trek-do-neznama-nova-v.3.mp3?rlkey=g0b45jn4j5uv0e3bi0bla133b&st=16kku0hc&dl=1', title: 'star-trek-do-neznama-nova-v.3' },
+ { src: 'https://www.dropbox.com/scl/fi/tml7gxkh8ylwrsod5qxvu/star-trek-do-neznama-nova-v.4.mp3?rlkey=s7tmwv0vhkyoie5anvkzwv3vx&st=jzswn54m&dl=1', title: 'star-trek-do-neznama-nova-v.4' },
+ { src: 'https://www.dropbox.com/scl/fi/ap2ou00a0lv1y5rm2ntsd/star-trek-do-neznama-nova-v.5.mp3?rlkey=63iasinq8xzqkh2h8ri7clj5k&st=xtq9hrpw&dl=1', title: 'star-trek-do-neznama-nova-v.5' },
+ { src: 'https://www.dropbox.com/scl/fi/rsq897k3k4syn5e9a207u/nova-pisnicka-1.mp3?rlkey=irtnu8vj5g8lvwti3hb5q5rtx&st=gwe4nd0j&dl=1', title: 'Děti hvězd v.1' },
+ { src: 'https://www.dropbox.com/scl/fi/7c0466nxjj2uewu6pldhi/nova-pisnicka-2.mp3?rlkey=q7wbsdwyqj7da4vt3niu6jshx&st=1p0q92sk&dl=1', title: 'Děti hvězd v.2' },
+ { src: 'https://www.dropbox.com/scl/fi/g6z44d5wv4njzvrlajp0m/nova-pisnicka-3.mp3?rlkey=43v6iybctgiu8l10l19xxb5sx&st=j02dy0gf&dl=1', title: 'Děti hvězd v.3' },
+ { src: 'https://www.dropbox.com/scl/fi/ty58wvj97sulq0jhmc5rz/nova-pisnicka-4.mp3?rlkey=389bopsrqx6nckveo98jk0m7v&st=42572fdg&dl=1', title: 'Děti hvězd v.4' },
+ { src: 'https://www.dropbox.com/scl/fi/trmivvigmuzzt4sg39qh5/nova-pisnicka-5.mp3?rlkey=oogptiwndx6r2y1waia182f5t&st=y3jpquss&dl=1', title: 'Děti hvězd v.5' },
+ { src: 'https://www.dropbox.com/scl/fi/lw9c3mkbe7twohy7mp6ny/nova-pisnicka-6.mp3?rlkey=mxu73wxyl4dtwnuomxkq2fg2z&st=lf9w6qgm&dl=1', title: 'Děti hvězd v.6' },
+ { src: 'https://www.dropbox.com/scl/fi/18fo57na1vr20vuws2dhp/nova-pisnicka-7.mp3?rlkey=5ggmbghoac1yec9suhrg6b13z&st=o92wgpty&dl=1', title: 'Děti hvězd v.7' },
+ { src: 'https://www.dropbox.com/scl/fi/esam8fputnvyu97z5zaxg/nova-pisnicka-8.mp3?rlkey=vqsv73as36t5mhxw1gfypcewg&st=j67nact4&dl=1', title: 'Děti hvězd v.8' },
+ { src: 'https://www.dropbox.com/scl/fi/x2g34bc4ytby31s41kv2f/nova-pisnicka-9.mp3?rlkey=zo3h814apvj2xc91rw3t5wedm&st=5nhvjwmw&dl=1', title: 'Děti hvězd v.9' },
+ { src: 'https://www.dropbox.com/scl/fi/70hd4e5zeugeo9hnnd1yy/nova-pisnicka-10.mp3?rlkey=ldceoekkji1r9qvky8psvdcn0&st=3l9x5s4g&dl=1', title: 'Děti hvězd v.10' },
 
             
     ]
@@ -502,4 +516,5 @@ window.tracks = [
 
 
  
+
 
