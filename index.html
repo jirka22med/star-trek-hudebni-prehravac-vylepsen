@@ -40,26 +40,26 @@
           <span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span>
         </span>
       </div>
-     
-      <div id="control-panel">
-           
+     <!-- obal/pouzdro-->
+      <div id="control-panel" >
+           <!-- hl kontejner tlačítek -->
         <div class="controls">
              
-          <button id="prev-button" title="Předchozí (Šipka vlevo)">◀️⬅️</button>
-          <button id="play-button" title="Přehrát (Mezerník/P)">🚀</button>
-          <button id="pause-button" title="Pauza (Mezerník/P)">🖖⏸️</button>
-          <button id="next-button" title="Další (Šipka vpravo)">▶️➡️</button>
-          <button id="loop-button" title="Opakovat (L)">🔁</button>
-          <button id="shuffle-button" title="Náhodně (Vypnuto)">🔀</button>
-          <button id="reset-button" title="Restartovat skladbu (R)">🔄</button>
-          <button id="fullscreen-toggle" title="Celá obrazovka (F)">⛶</button>
-          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky">📋</button>
-          <button id="reload-button" title="Obnovit stránku">🔄</button>
-          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist">📜</button> 
-          <button id="timer-button" title="Časovač vypnutí (T)">⏰</button>
-          <button onclick="window.clearAllAudioPlayerData()">🗑️❌🔄</button> 
-          <button class="perf-monitor-btn">🔍📊</button>
-           <button id="jirik-manual-opener-btn" >🧾</button>  
+          <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button>
+          <button id="play-button" title="Přehrát (Mezerník/P)" style="background:  #4169E1 ;">🚀</button>
+          <button id="pause-button" title="Pauza (Mezerník/P)" style="background: #B22222;">🖖⏸️</button>
+          <button id="next-button" title="Další (Šipka vpravo)" style="background:#00008B ;">▶️➡️</button>
+          <button id="loop-button" title="Opakovat (L)" style="background: #00FF00;">🔁</button>
+          <button id="shuffle-button" title="Náhodně (Vypnuto)" style="background: #FF8C00;">🔀</button>
+          <button id="reset-button" title="Restartovat skladbu (R)" style="background: #FF3399 ;">🔄</button>
+          <button id="fullscreen-toggle" title="Celá obrazovka (F)" style="background: #D2691E ;">⛶</button>
+          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" style="background: #663300 ;">📋</button>
+          <button id="reload-button" title="Obnovit stránku" style="background: #CC9966;">🔄</button>
+          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" style="background: #CC6633 ;">📜</button> 
+          <button id="timer-button" title="Časovač vypnutí (T)" style="background: #FFD700 ;">⏰</button>
+          <button onclick="window.clearAllAudioPlayerData()" style="background: #000000 ;">🗑️</button> 
+          <button class="perf-monitor-btn" style="background: #FF8F66;">🔍📊</button>
+           <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
             
             
         </div>
@@ -82,8 +82,8 @@
   
       </div>
     </div> 
-    <div class="hlavni-kontejner-pro-cas-a-casovac">
-  <div class="time-calendar-wrapper">
+    <div class="hlavni-kontejner-pro-cas-a-casovac" >
+  <div class="time-calendar-wrapper" >
     <div class="time">
       <div class="time-colon"><div class="time-text"><span class="num hours">00</span><span class="text">H</span></div></div>
       <span class="colon">:</span>
@@ -111,7 +111,7 @@
    
        <div class="keyboard-container">
         <div id="popisky"> 
-         <div class="tone-meter-container">
+         <div class="tone-meter-container" style="display:inline-block;padding:2px;background:#000;border:2px solid #C00000;color:#fff;margin:0;">
         
         <div class="tone-meter-title">
             🎵 TONE.METER ENHANCED 🎵
@@ -242,11 +242,11 @@
            
  <script src="universalni-perfomens-monitor.js" defer ></script>
     <script src="jirkuv-hlidac.js"></script>
-
+<!-- NOVÝ: VIZUÁLNÍ TUNER -->
    <script src="audiou-vizuace.js"></script>  
   <script src="notificationFix.js"></script>
 <script src="autoFade.js"></script>  
- <script src="bookmarkManager.js"></script>   
+ <!--<script src="bookmarkManager.js"></script> -->  
  <script src="voiceControl.js"></script>   
     <script src="playlistSettings.js"></script>
     <script src="pokrocila-sprava-playlistu.js"></script>
