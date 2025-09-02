@@ -238,24 +238,19 @@ class AudioDisconnectMonitor {
         
         message += allNames.join(', ') + ' - Přehrávání zastaveno';
         
-        // Pokus o použití globální showNotification funkce
-        if (typeof window.showNotification === 'function') {
-            window.showNotification(message, 'warn', 4000);
-        } else {
-            // Fallback - vlastní notifikace
-            this.showCustomNotification(message);
-        }
+        // Vždy používá vlastní notifikační systém (kvůli konfliktům s tone-meter)
+        this.showCustomNotification(message);
     }
 
     /**
      * Vlastní systém notifikací (fallback)
      */
     showCustomNotification(message) {
-        // Vytvoření notifikačního elementu
-        let notification = document.getElementById('bluetooth-notification');
+        // Vytvoření notifikačního elementu s unikátním ID
+        let notification = document.getElementById('audio-disconnect-notification');
         if (!notification) {
             notification = document.createElement('div');
-            notification.id = 'bluetooth-notification';
+            notification.id = 'audio-disconnect-notification';
             notification.style.cssText = `
                 position: fixed;
                 top: 20px;
