@@ -839,7 +839,7 @@ function createVisibilityToggleButton() {
     visibilityToggleButton.id = 'visibility-toggle-button';
     visibilityToggleButton.className = 'visibility-toggle-btn';
     visibilityToggleButton.title = 'Správa viditelnosti tlačítek (Ctrl+V)';
-    visibilityToggleButton.innerHTML = '👁️ Tlačítka';
+    visibilityToggleButton.innerHTML = '👁️';
     
     // Přidání do stránky - najdeme vhodné místo
     let targetContainer = document.querySelector('.controls');
@@ -1161,4 +1161,5 @@ if (typeof window !== 'undefined') {
  * ✅ Podpora pro Playlist Settings a Auto-Fade moduly
  * 
  * Více admirále Jiříku, tvá flotila má nové velitelství nad tlačítky! 🚀
+
  */
