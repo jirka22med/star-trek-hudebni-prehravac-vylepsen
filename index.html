@@ -57,10 +57,10 @@
           <button id="reload-button" title="Obnovit stránku" style="background: #CC9966;">🔄</button>
           <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" style="background: #CC6633 ;">📜</button> 
           <button id="timer-button" title="Časovač vypnutí (T)" style="background: #FFD700 ;">⏰</button>
-          <button onclick="window.clearAllAudioPlayerData()" style="background: #000000 ;">🗑️</button> 
-          <button class="perf-monitor-btn" style="background: #FF8F66;">🔍📊</button>
+          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" style="background: #000000;">🗑️</button>
+          <button id="perf-monitor-btn">🔍📊</button>
            <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
-            
+             
             
         </div>
        
@@ -253,6 +253,11 @@
 
  <!-- detekce odpojení blutoot a kabel sluchátek/reproduktoru -->
     <script src="bluetoothDisconnectMonitor.js"></script>
+    
+    <!-- Správá viditelnosti tlačítek -->
+     <script src="buttonVisibilityManager.js"></script>
+    
+     
 </body>
 </html>
 
