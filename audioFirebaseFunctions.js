@@ -532,3 +532,545 @@ window.debugPlaylistSettings = async function() {
 };
 
 console.log("audioFirebaseFunctions.js: Rozšíření pro nastavení playlistu načteno a připraveno.");
+
+
+
+//správa viditelnosti tlačítek
+
+// === FIREBASE ROZŠÍŘENÍ PRO SPRÁVU VIDITELNOSTI TLAČÍTEK ===
+// Přidej tento kód na konec svého audioFirebaseFunctions.js souboru
+// Více admirál Jiřík & Admirál Claude.AI - Hvězdná flotila
+
+console.log("🖖 Načítám Firebase rozšíření pro správu viditelnosti tlačítek...");
+
+// --- UKLÁDÁNÍ KONFIGURACE VIDITELNOSTI TLAČÍTEK ---
+
+// Ukládá konfiguraci viditelnosti tlačítek do Firestore
+window.saveButtonVisibilityToFirestore = async function(visibilityConfigObject) {
+    console.log("audioFirebaseFunctions.js: Pokus o uložení konfigurace viditelnosti tlačítek do Firestore.", visibilityConfigObject);
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze uložit konfiguraci viditelnosti.");
+        window.showNotification("Chyba: Databáze není připravena k uložení konfigurace viditelnosti!", 'error');
+        throw new Error("Firestore databáze není připravena k uložení konfigurace viditelnosti.");
+    }
+
+    const visibilityDocRef = db.collection('audioPlayerSettings').doc('buttonVisibilityConfig');
+    
+    try {
+        // Přidáváme metadata pro sledování změn
+        const configWithMetadata = {
+            ...visibilityConfigObject,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            version: "1.0",
+            deviceInfo: {
+                userAgent: navigator.userAgent.substring(0, 100), // Ořez pro Firestore limit
+                platform: navigator.platform,
+                language: navigator.language
+            },
+            configHash: generateConfigHash(visibilityConfigObject) // Pro detekci změn
+        };
+
+        await visibilityDocRef.set(configWithMetadata, { merge: true });
+        console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti tlačítek úspěšně uložena do Firestore.");
+        return true;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při ukládání konfigurace viditelnosti do Firestore:", error);
+        window.showNotification("Chyba při ukládání konfigurace viditelnosti do cloudu!", 'error');
+        throw error;
+    }
+};
+
+// --- NAČÍTÁNÍ KONFIGURACE VIDITELNOSTI TLAČÍTEK ---
+
+// Načítá konfiguraci viditelnosti tlačítek z Firestore
+window.loadButtonVisibilityFromFirestore = async function() {
+    console.log("audioFirebaseFunctions.js: Pokus o načtení konfigurace viditelnosti tlačítek z Firestore.");
+    if (!db) {
+        console.log("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst konfiguraci viditelnosti.");
+        return null;
+    }
+
+    try {
+        const doc = await db.collection('audioPlayerSettings').doc('buttonVisibilityConfig').get();
+        if (doc.exists) {
+            const data = doc.data();
+            
+            // Odstraníme metadata před vrácením konfigurace
+            const { lastUpdated, version, deviceInfo, configHash, ...visibilityConfig } = data;
+            
+            console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti tlačítek úspěšně načtena z Firestore.", visibilityConfig);
+            console.log(`audioFirebaseFunctions.js: Konfigurace viditelnosti - verze: ${version || 'neznámá'}, poslední aktualizace:`, lastUpdated?.toDate?.() || 'neznámá');
+            console.log(`audioFirebaseFunctions.js: Hash konfigurace: ${configHash || 'neznámý'}`);
+            
+            return visibilityConfig;
+        } else {
+            console.log("audioFirebaseFunctions.js: Dokument s konfigurací viditelnosti tlačítek neexistuje.");
+            return null;
+        }
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při načítání konfigurace viditelnosti z Firestore:", error);
+        window.showNotification("Chyba při načítání konfigurace viditelnosti z cloudu!", 'error');
+        return null; // Vrátíme null místo throw, aby se aplikace nezhroutila
+    }
+};
+
+// --- ZÁLOHOVÁNÍ KONFIGURACE VIDITELNOSTI ---
+
+// Vytvoří zálohu konfigurace viditelnosti tlačítek
+window.backupButtonVisibilityToFirestore = async function(backupName = null, currentConfig = null) {
+    console.log("audioFirebaseFunctions.js: Pokus o vytvoření zálohy konfigurace viditelnosti tlačítek.");
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze vytvořit zálohu.");
+        throw new Error("Firestore databáze není připravena k vytvoření zálohy.");
+    }
+
+    try {
+        // Pokud není config poskytnut, načteme aktuální
+        let configToBackup = currentConfig;
+        if (!configToBackup) {
+            configToBackup = await window.loadButtonVisibilityFromFirestore();
+            if (!configToBackup) {
+                throw new Error("Žádná konfigurace viditelnosti tlačítek k zálohování nenalezena.");
+            }
+        }
+
+        // Vytvoříme název zálohy
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const finalBackupName = backupName || `visibility-backup-${timestamp}`;
+
+        // Uložíme zálohu
+        const backupDocRef = db.collection('audioPlayerSettings')
+            .doc('backups')
+            .collection('buttonVisibilityBackups')
+            .doc(finalBackupName);
+        
+        await backupDocRef.set({
+            ...configToBackup,
+            backupCreated: firebase.firestore.FieldValue.serverTimestamp(),
+            backupName: finalBackupName,
+            backupType: 'buttonVisibility',
+            originalHash: generateConfigHash(configToBackup)
+        });
+
+        console.log(`audioFirebaseFunctions.js: Záloha konfigurace viditelnosti úspěšně vytvořena: ${finalBackupName}`);
+        return finalBackupName;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při vytváření zálohy konfigurace viditelnosti:", error);
+        window.showNotification("Chyba při vytváření zálohy konfigurace viditelnosti!", 'error');
+        throw error;
+    }
+};
+
+// --- OBNOVENÍ Z ZÁLOHY ---
+
+// Obnoví konfiguraci viditelnosti ze zálohy
+window.restoreButtonVisibilityFromBackup = async function(backupName) {
+    console.log(`audioFirebaseFunctions.js: Pokus o obnovení konfigurace viditelnosti ze zálohy: ${backupName}`);
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze obnovit ze zálohy.");
+        throw new Error("Firestore databáze není připravena k obnovení ze zálohy.");
+    }
+
+    try {
+        const backupDocRef = db.collection('audioPlayerSettings')
+            .doc('backups')
+            .collection('buttonVisibilityBackups')
+            .doc(backupName);
+        const doc = await backupDocRef.get();
+        
+        if (!doc.exists) {
+            throw new Error(`Záloha '${backupName}' nebyla nalezena.`);
+        }
+
+        const backupData = doc.data();
+        const { backupCreated, backupName: originalBackupName, backupType, originalHash, ...configToRestore } = backupData;
+
+        // Ověříme integritu zálohy
+        const restoredHash = generateConfigHash(configToRestore);
+        if (originalHash && originalHash !== restoredHash) {
+            console.warn("audioFirebaseFunctions.js: Varování - hash zálohy se neshoduje, možná je poškozená.");
+        }
+
+        // Uložíme obnovenou konfiguraci jako aktuální
+        await window.saveButtonVisibilityToFirestore(configToRestore);
+        
+        console.log(`audioFirebaseFunctions.js: Konfigurace viditelnosti úspěšně obnovena ze zálohy: ${backupName}`);
+        console.log("audioFirebaseFunctions.js: Záloha byla vytvořena:", backupCreated?.toDate?.());
+        
+        return configToRestore;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při obnovování konfigurace ze zálohy:", error);
+        window.showNotification(`Chyba při obnovování ze zálohy: ${error.message}`, 'error');
+        throw error;
+    }
+};
+
+// --- SEZNAM ZÁLOH ---
+
+// Načte seznam dostupných záloh konfigurace viditelnosti
+window.listButtonVisibilityBackups = async function() {
+    console.log("audioFirebaseFunctions.js: Pokus o načtení seznamu záloh konfigurace viditelnosti.");
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst seznam záloh.");
+        return [];
+    }
+
+    try {
+        const backupsCollectionRef = db.collection('audioPlayerSettings')
+            .doc('backups')
+            .collection('buttonVisibilityBackups');
+        const snapshot = await backupsCollectionRef.orderBy('backupCreated', 'desc').get();
+        
+        const backups = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            backups.push({
+                id: doc.id,
+                name: data.backupName || doc.id,
+                created: data.backupCreated?.toDate?.() || null,
+                type: data.backupType || 'buttonVisibility',
+                configCount: Object.keys(data).filter(key => !['backupCreated', 'backupName', 'backupType', 'originalHash'].includes(key)).length,
+                hash: data.originalHash || 'neznámý'
+            });
+        });
+
+        console.log(`audioFirebaseFunctions.js: Nalezeno ${backups.length} záloh konfigurace viditelnosti.`);
+        return backups;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při načítání seznamu záloh viditelnosti:", error);
+        window.showNotification("Chyba při načítání seznamu záloh konfigurace viditelnosti!", 'error');
+        return [];
+    }
+};
+
+// --- SMAZÁNÍ ZÁLOHY ---
+
+// Smaže konkrétní zálohu konfigurace viditelnosti
+window.deleteButtonVisibilityBackup = async function(backupName) {
+    console.log(`audioFirebaseFunctions.js: Pokus o smazání zálohy konfigurace viditelnosti: ${backupName}`);
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat zálohu.");
+        throw new Error("Firestore databáze není připravena ke smazání zálohy.");
+    }
+
+    try {
+        const backupDocRef = db.collection('audioPlayerSettings')
+            .doc('backups')
+            .collection('buttonVisibilityBackups')
+            .doc(backupName);
+        await backupDocRef.delete();
+        
+        console.log(`audioFirebaseFunctions.js: Záloha konfigurace viditelnosti '${backupName}' úspěšně smazána.`);
+        return true;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při mazání zálohy konfigurace viditelnosti:", error);
+        window.showNotification(`Chyba při mazání zálohy konfigurace viditelnosti: ${error.message}`, 'error');
+        throw error;
+    }
+};
+
+// --- SMAZÁNÍ KONFIGURACE ---
+
+// Smaže aktuální konfiguraci viditelnosti z Firestore
+window.clearButtonVisibilityFromFirestore = async function() {
+    console.log("audioFirebaseFunctions.js: Pokus o smazání konfigurace viditelnosti z Firestore.");
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat konfiguraci.");
+        throw new Error("Firestore databáze není připravena ke smazání konfigurace viditelnosti.");
+    }
+
+    try {
+        const visibilityDocRef = db.collection('audioPlayerSettings').doc('buttonVisibilityConfig');
+        await visibilityDocRef.delete();
+        console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti tlačítek úspěšně smazána z Firestore.");
+        return true;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při mazání konfigurace viditelnosti z Firestore:", error);
+        window.showNotification("Chyba při mazání konfigurace viditelnosti z cloudu!", 'error');
+        throw error;
+    }
+};
+
+// --- SYNCHRONIZACE KONFIGURACE ---
+
+// Synchronizuje místní konfiguraci s cloudem
+window.syncButtonVisibilityWithFirestore = async function(localConfig = null) {
+    console.log("audioFirebaseFunctions.js: Spouštím synchronizaci konfigurace viditelnosti s cloudem.");
+    if (!db) {
+        console.log("audioFirebaseFunctions.js: Firestore není k dispozici, synchronizace přeskočena.");
+        return { success: false, reason: 'firebase_not_available' };
+    }
+
+    try {
+        // Načteme konfiguraci z cloudu
+        const cloudConfig = await window.loadButtonVisibilityFromFirestore();
+        
+        if (!localConfig) {
+            // Pokud není lokální config poskytnut, načteme z localStorage
+            const stored = localStorage.getItem('buttonVisibility');
+            localConfig = stored ? JSON.parse(stored) : null;
+        }
+
+        let result = { success: true };
+
+        if (!cloudConfig && localConfig) {
+            // Cloud je prázdný, ale máme lokální - nahraj do cloudu
+            await window.saveButtonVisibilityToFirestore(localConfig);
+            result.action = 'uploaded_to_cloud';
+            result.message = 'Lokální konfigurace nahrána do cloudu';
+            
+        } else if (cloudConfig && !localConfig) {
+            // Cloud má konfiguraci, ale lokálně není - stáhni z cloudu
+            localStorage.setItem('buttonVisibility', JSON.stringify(cloudConfig));
+            result.action = 'downloaded_from_cloud';
+            result.message = 'Konfigurace stažena z cloudu';
+            result.config = cloudConfig;
+            
+        } else if (cloudConfig && localConfig) {
+            // Obě konfigurace existují - porovnej hashe
+            const localHash = generateConfigHash(localConfig);
+            const cloudHash = generateConfigHash(cloudConfig);
+            
+            if (localHash !== cloudHash) {
+                // Konfigurace se liší - použij novější
+                const cloudDoc = await db.collection('audioPlayerSettings').doc('buttonVisibilityConfig').get();
+                const cloudTimestamp = cloudDoc.exists ? cloudDoc.data().lastUpdated?.toDate?.() : null;
+                const localTimestamp = new Date(localStorage.getItem('buttonVisibilityLastModified') || 0);
+                
+                if (cloudTimestamp && cloudTimestamp > localTimestamp) {
+                    // Cloud je novější
+                    localStorage.setItem('buttonVisibility', JSON.stringify(cloudConfig));
+                    result.action = 'updated_from_cloud';
+                    result.message = 'Aktualizováno z cloudu (novější verze)';
+                    result.config = cloudConfig;
+                } else {
+                    // Lokální je novější nebo stejně starý
+                    await window.saveButtonVisibilityToFirestore(localConfig);
+                    result.action = 'updated_cloud';
+                    result.message = 'Cloud aktualizován lokální konfigurací';
+                }
+            } else {
+                result.action = 'no_changes';
+                result.message = 'Konfigurace je synchronizovaná';
+            }
+            
+        } else {
+            // Ani cloud ani lokální konfigurace neexistuje
+            result.action = 'no_config';
+            result.message = 'Žádná konfigurace k synchronizaci';
+        }
+
+        console.log("audioFirebaseFunctions.js: Synchronizace dokončena:", result);
+        return result;
+        
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při synchronizaci konfigurace viditelnosti:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// --- POMOCNÉ FUNKCE ---
+
+// Generuje hash konfigurace pro detekci změn
+function generateConfigHash(config) {
+    if (!config || typeof config !== 'object') return 'empty';
+    
+    try {
+        // Vytvoříme deterministický string z konfigurace
+        const sortedKeys = Object.keys(config).sort();
+        const configString = sortedKeys.map(key => `${key}:${config[key]}`).join('|');
+        
+        // Jednoduchý hash algoritmus
+        let hash = 0;
+        for (let i = 0; i < configString.length; i++) {
+            const char = configString.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Převede na 32bit integer
+        }
+        
+        return Math.abs(hash).toString(16);
+    } catch (error) {
+        console.error("Chyba při generování hash konfigurace:", error);
+        return 'error';
+    }
+}
+
+// Automatická synchronizace při načtení stránky
+window.autoSyncButtonVisibilityOnLoad = async function() {
+    console.log("audioFirebaseFunctions.js: Spouštím automatickou synchronizaci konfigurace viditelnosti při načtení.");
+    
+    // Počkáme na inicializaci Firebase
+    if (typeof window.initializeFirebaseAppAudio === 'function') {
+        try {
+            await window.initializeFirebaseAppAudio();
+            const syncResult = await window.syncButtonVisibilityWithFirestore();
+            
+            if (syncResult.success && syncResult.config) {
+                // Aplikujeme nově načtenou konfiguraci
+                if (window.ButtonVisibilityManager && typeof window.ButtonVisibilityManager.setConfig === 'function') {
+                    window.ButtonVisibilityManager.setConfig(syncResult.config);
+                    console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti aplikována po synchronizaci.");
+                }
+            }
+            
+            if (window.showNotification && syncResult.message) {
+                window.showNotification(`Synchronizace viditelnosti: ${syncResult.message}`, 'info', 3000);
+            }
+            
+        } catch (error) {
+            console.error("audioFirebaseFunctions.js: Chyba při automatické synchronizaci:", error);
+        }
+    }
+};
+
+// --- AKTUALIZACE clearAllAudioFirestoreData FUNKCE ---
+
+// Rozšíříme existující funkci pro mazání všech dat o konfiguraci viditelnosti
+const originalClearAllAudioFirestoreDataWithVisibility = window.clearAllAudioFirestoreData;
+
+window.clearAllAudioFirestoreData = async function() {
+    console.log("audioFirebaseFunctions.js: Pokus o smazání VŠECH dat včetně konfigurace viditelnosti tlačítek.");
+    if (!db) {
+        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat všechna data.");
+        window.showNotification("Chyba: Databáze není připravena k mazání všech dat!", 'error');
+        throw new Error("Firestore databáze není připravena ke smazání všech dat.");
+    }
+
+    try {
+        // Nejdříve zavoláme původní funkci
+        if (originalClearAllAudioFirestoreDataWithVisibility) {
+            await originalClearAllAudioFirestoreDataWithVisibility();
+        } else {
+            // Fallback - smažeme hlavní kolekce
+            const collectionsToClean = ['audioPlaylists', 'audioPlayerSettings'];
+            for (const collectionName of collectionsToClean) {
+                const collectionRef = db.collection(collectionName);
+                const snapshot = await collectionRef.get();
+                const batch = db.batch();
+                
+                snapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                if (snapshot.docs.length > 0) {
+                    await batch.commit();
+                    console.log(`audioFirebaseFunctions.js: Smazáno ${snapshot.docs.length} dokumentů z kolekce '${collectionName}'.`);
+                }
+            }
+        }
+        
+        // Poté smažeme zálohy konfigurace viditelnosti
+        console.log("audioFirebaseFunctions.js: Mažu zálohy konfigurace viditelnosti...");
+        const visibilityBackupsRef = db.collection('audioPlayerSettings')
+            .doc('backups')
+            .collection('buttonVisibilityBackups');
+        const visibilitySnapshot = await visibilityBackupsRef.get();
+        
+        const visibilityBatch = db.batch();
+        let deletedVisibilityBackups = 0;
+        
+        visibilitySnapshot.docs.forEach(doc => {
+            visibilityBatch.delete(doc.ref);
+            deletedVisibilityBackups++;
+        });
+        
+        if (deletedVisibilityBackups > 0) {
+            await visibilityBatch.commit();
+            console.log(`audioFirebaseFunctions.js: Smazáno ${deletedVisibilityBackups} záloh konfigurace viditelnosti.`);
+        }
+        
+        console.log("audioFirebaseFunctions.js: Všechna data audio přehrávače včetně konfigurace viditelnosti úspěšně smazána.");
+        
+        // Vyčistíme také localStorage
+        localStorage.removeItem('buttonVisibility');
+        localStorage.removeItem('buttonVisibilityLastModified');
+        
+        return true;
+    } catch (error) {
+        console.error("audioFirebaseFunctions.js: Chyba při mazání všech dat z Firestore:", error);
+        window.showNotification("Chyba při mazání všech dat z cloudu!", 'error');
+        throw error;
+    }
+};
+
+// --- DEBUGGING FUNKCE ---
+
+// Debug funkce pro testování konfigurace viditelnosti
+window.debugButtonVisibilityFirestore = async function() {
+    if (!db) {
+        console.log("DEBUG VISIBILITY: Firestore databáze není inicializována.");
+        return;
+    }
+    
+    try {
+        console.log("=== DEBUG: Button Visibility Firestore ===");
+        
+        // Načteme aktuální konfiguraci
+        const config = await window.loadButtonVisibilityFromFirestore();
+        console.log("Aktuální konfigurace viditelnosti:", config);
+        
+        // Načteme seznam záloh
+        const backups = await window.listButtonVisibilityBackups();
+        console.log("Dostupné zálohy konfigurace viditelnosti:", backups);
+        
+        // Informace o dokumentech
+        const doc = await db.collection('audioPlayerSettings').doc('buttonVisibilityConfig').get();
+        console.log("Dokument konfigurace existuje:", doc.exists);
+        if (doc.exists) {
+            console.log("Velikost dokumentu (přibližně):", JSON.stringify(doc.data()).length, "znaků");
+            console.log("Metadata dokumentu:", doc.data().lastUpdated?.toDate?.(), doc.data().version);
+        }
+        
+        // Test synchronizace
+        const syncResult = await window.syncButtonVisibilityWithFirestore();
+        console.log("Test synchronizace:", syncResult);
+        
+        console.log("=== END DEBUG VISIBILITY ===");
+        
+        return {
+            config,
+            backups,
+            documentExists: doc.exists,
+            syncResult
+        };
+    } catch (error) {
+        console.error("DEBUG VISIBILITY: Chyba při ladění:", error);
+        return { error: error.message };
+    }
+};
+
+// --- INICIALIZACE PO NAČTENÍ ---
+
+// Automatická inicializace po načtení Firebase
+if (typeof window !== 'undefined') {
+    // Počkáme na načtení Firebase a pak spustíme auto-sync
+    const checkFirebaseAndSync = setInterval(() => {
+        if (window.db || (typeof firebase !== 'undefined' && firebase.apps?.length > 0)) {
+            clearInterval(checkFirebaseAndSync);
+            setTimeout(() => {
+                window.autoSyncButtonVisibilityOnLoad();
+            }, 2000); // Dáme čas na inicializaci ostatních komponent
+        }
+    }, 1000);
+    
+    // Fallback - pokud se Firebase neinicializuje do 30 sekund, přestaneme čekat
+    setTimeout(() => {
+        clearInterval(checkFirebaseAndSync);
+    }, 30000);
+}
+
+console.log("🖖 Firebase rozšíření pro správu viditelnosti tlačítek načteno a připraveno!");
+
+// --- EXPORT FUNKCÍ ---
+window.ButtonVisibilityFirebaseManager = {
+    save: window.saveButtonVisibilityToFirestore,
+    load: window.loadButtonVisibilityFromFirestore,
+    backup: window.backupButtonVisibilityToFirestore,
+    restore: window.restoreButtonVisibilityFromBackup,
+    listBackups: window.listButtonVisibilityBackups,
+    deleteBackup: window.deleteButtonVisibilityBackup,
+    clear: window.clearButtonVisibilityFromFirestore,
+    sync: window.syncButtonVisibilityWithFirestore,
+    autoSync: window.autoSyncButtonVisibilityOnLoad,
+    debug: window.debugButtonVisibilityFirestore
+};
