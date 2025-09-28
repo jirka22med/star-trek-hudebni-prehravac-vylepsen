@@ -1,7 +1,7 @@
 const DEBUG_MODE = false; // Globální přepínač pro logování
 
 
-//ahoj claude dalo by se hlasové ovládání dokazal bys udělat hlasové ovládání od znovu a od začátku a vyladit všechny možné chyby při hlasovém ovládání?. PS: ale budeme pracovat pouze v přípojném soboru voicecontrols.js? to znamená že další přehravač nepotřebuji stačí mi jen přípojní soubor?. 
+
 
 
 
@@ -889,4 +889,5 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (DOM.playlist.style.display === 'none') DOM.playlist.style.display = 'block';
         }
     }, 100);
+
 });
