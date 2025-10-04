@@ -130,10 +130,56 @@ class MediaSessionManager {
 
             navigator.mediaSession.metadata = new MediaMetadata(metadata);
             
+            // DŮLEŽITÉ: Udržet playback state jako 'playing' i během přepínání
+            if (navigator.mediaSession.playbackState !== 'playing') {
+                navigator.mediaSession.playbackState = 'playing';
+            }
+            
             if (DEBUG_ROZHRANI) console.log('MediaSessionManager: Metadata aktualizována', metadata);
 
         } catch (error) {
             console.error('MediaSessionManager: Chyba při aktualizaci metadat:', error);
+        }
+    }
+
+    /**
+     * Předběžná aktualizace metadat (volat PŘED načtením tracku)
+     */
+    preloadMetadata(track, artwork = null) {
+        if (!this.isSupported) return;
+
+        try {
+            // Okamžitě zobrazíme nový track v notifikaci
+            const metadata = {
+                title: track.title || 'Načítání...',
+                artist: track.artist || 'Star Trek Collection',
+                album: track.album || 'Hudební přehrávač',
+                artwork: []
+            };
+
+            if (artwork) {
+                this.currentArtwork = artwork;
+            }
+
+            if (this.currentArtwork) {
+                metadata.artwork = [
+                    {
+                        src: this.currentArtwork,
+                        sizes: '512x512',
+                        type: 'image/jpeg'
+                    }
+                ];
+            }
+
+            navigator.mediaSession.metadata = new MediaMetadata(metadata);
+            
+            // Udržíme notifikaci aktivní
+            navigator.mediaSession.playbackState = 'playing';
+            
+            if (DEBUG_ROZHRANI) console.log('MediaSessionManager: Preload metadata:', metadata);
+
+        } catch (error) {
+            console.error('MediaSessionManager: Chyba při preload metadat:', error);
         }
     }
 
@@ -440,7 +486,10 @@ class InterfaceManager {
      * Nastavení event listenerů
      */
     setupEventListeners() {
-        // Aktualizace metadat při změně tracku
+        // Zachytíme změnu tracku PŘED načtením (hook do playTrack funkce)
+        this.hookIntoPlayTrack();
+
+        // Aktualizace metadat při načtení
         this.audioPlayer.addEventListener('loadedmetadata', () => {
             const trackTitle = document.getElementById('trackTitle')?.textContent || 'Neznámý track';
             
@@ -466,20 +515,70 @@ class InterfaceManager {
             }
         });
 
-        // Aktualizace playback state
+        // Aktualizace playback state - VYLEPŠENO
         this.audioPlayer.addEventListener('play', () => {
             this.mediaSession.setPlaybackState('playing');
         });
 
         this.audioPlayer.addEventListener('pause', () => {
-            this.mediaSession.setPlaybackState('paused');
+            // Pokud není track ended, ponecháme 'playing' aby notifikace zůstala aktivní
+            if (this.audioPlayer.ended) {
+                this.mediaSession.setPlaybackState('paused');
+            }
         });
 
         this.audioPlayer.addEventListener('ended', () => {
-            this.mediaSession.setPlaybackState('none');
+            // Při skončení tracku ponecháme notifikaci aktivní
+            this.mediaSession.setPlaybackState('playing');
+        });
+
+        // Zachytíme loading state
+        this.audioPlayer.addEventListener('loadstart', () => {
+            // Udržíme notifikaci aktivní během načítání
+            this.mediaSession.setPlaybackState('playing');
+        });
+
+        this.audioPlayer.addEventListener('waiting', () => {
+            // Během bufferingu ponecháme 'playing'
+            this.mediaSession.setPlaybackState('playing');
         });
 
         if (DEBUG_ROZHRANI) console.log('InterfaceManager: Event listenery nastaveny');
+    }
+
+    /**
+     * Hook do playTrack funkce pro okamžitou aktualizaci metadat
+     */
+    hookIntoPlayTrack() {
+        // Monitorujeme změny v #trackTitle
+        const trackTitle = document.getElementById('trackTitle');
+        if (!trackTitle) return;
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                    const newTitle = trackTitle.textContent;
+                    if (newTitle && newTitle !== 'Playlist je prázdný') {
+                        // Okamžitě aktualizujeme metadata
+                        this.mediaSession.preloadMetadata({
+                            title: newTitle,
+                            artist: 'Star Trek Collection',
+                            album: 'Hudební přehrávač'
+                        }, this.getDefaultArtwork());
+                        
+                        if (DEBUG_ROZHRANI) console.log('InterfaceManager: Track změněn na:', newTitle);
+                    }
+                }
+            });
+        });
+
+        observer.observe(trackTitle, {
+            childList: true,
+            characterData: true,
+            subtree: true
+        });
+
+        if (DEBUG_ROZHRANI) console.log('InterfaceManager: MutationObserver aktivován pro trackTitle');
     }
 
     /**
@@ -487,7 +586,7 @@ class InterfaceManager {
      */
     getDefaultArtwork() {
         // Pokud máš vlastní logo, vlož sem URL
-        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0iI0ZGRiI+8J+WljwvdGV4dD48L3N2Zz4=';
+        return 'https://img41.rajce.idnes.cz/d4102/19/19244/19244630_db82ad174937335b1a151341387b7af2/images/image_82x82.jpg?ver=1';
     }
 
     /**
