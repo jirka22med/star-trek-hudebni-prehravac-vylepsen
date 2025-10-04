@@ -72,7 +72,20 @@
         </div>
       </div>
       
-      
+      <div id="search-container" class="search-container">
+    <div class="search-input-wrapper" >
+        <input  
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="🔍 Hledat skladbu... (Ctrl+F)"
+            autocomplete="off"
+        />
+        <button id="clear-search" class="clear-search-button" style="display: none;">✖</button>
+    </div>
+    <div id="search-counter" class="search-counter" style="display: none;"></div>
+    <div id="search-results" class="search-results" style="display: none;"></div>
+</div>
 
       <div class="playlist" id="playlist" style="display: block; "> 
           
@@ -256,7 +269,7 @@
     
     <!-- Správá viditelnosti tlačítek -->
      <script src="buttonVisibilityManager.js"></script>
-    
+    <script src="vyhledavac-skladeb.js"></script>
      
 </body>
 </html>
