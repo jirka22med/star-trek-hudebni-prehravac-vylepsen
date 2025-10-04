@@ -35,15 +35,19 @@ class MediaSessionManager {
         }
 
         try {
-            // Nastavení action handlerů
+            // Nastavení action handlerů - OPRAVENO pro toggle play/pause
             navigator.mediaSession.setActionHandler('play', () => {
                 if (DEBUG_ROZHRANI) console.log('MediaSession: Play action');
-                audioPlayer.play();
+                if (audioPlayer.paused) {
+                    audioPlayer.play().catch(e => console.error('Play error:', e));
+                }
             });
 
             navigator.mediaSession.setActionHandler('pause', () => {
                 if (DEBUG_ROZHRANI) console.log('MediaSession: Pause action');
-                audioPlayer.pause();
+                if (!audioPlayer.paused) {
+                    audioPlayer.pause();
+                }
             });
 
             navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -515,21 +519,22 @@ class InterfaceManager {
             }
         });
 
-        // Aktualizace playback state - VYLEPŠENO
+        // Aktualizace playback state - VYLEPŠENO s debug výpisem
         this.audioPlayer.addEventListener('play', () => {
             this.mediaSession.setPlaybackState('playing');
+            if (DEBUG_ROZHRANI) console.log('InterfaceManager: Audio PLAY event → playbackState=playing');
         });
 
         this.audioPlayer.addEventListener('pause', () => {
-            // Pokud není track ended, ponecháme 'playing' aby notifikace zůstala aktivní
-            if (this.audioPlayer.ended) {
-                this.mediaSession.setPlaybackState('paused');
-            }
+            // Nastavíme vždy 'paused' pro správnou synchronizaci s notifikací
+            this.mediaSession.setPlaybackState('paused');
+            if (DEBUG_ROZHRANI) console.log('InterfaceManager: Audio PAUSE event → playbackState=paused');
         });
 
         this.audioPlayer.addEventListener('ended', () => {
-            // Při skončení tracku ponecháme notifikaci aktivní
-            this.mediaSession.setPlaybackState('playing');
+            // Při skončení tracku nastavíme paused
+            this.mediaSession.setPlaybackState('paused');
+            if (DEBUG_ROZHRANI) console.log('InterfaceManager: Audio ENDED event → playbackState=paused');
         });
 
         // Zachytíme loading state
@@ -585,8 +590,8 @@ class InterfaceManager {
      * Získání výchozího artworku (Star Trek logo)
      */
     getDefaultArtwork() {
-        // Pokud máš vlastní logo, vlož sem URL
-        return 'https://img41.rajce.idnes.cz/d4102/19/19244/19244630_db82ad174937335b1a151341387b7af2/images/image_82x82.jpg?ver=1';
+        // Vlastní logo více admirála Jiříka - 512×512 px
+        return 'https://img40.rajce.idnes.cz/d4003/19/19517/19517492_984d6887838eae80a8eb677199393188/images/image_512x512_2.jpg?ver=0';
     }
 
     /**
