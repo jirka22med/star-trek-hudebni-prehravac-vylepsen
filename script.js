@@ -1,11 +1,5 @@
 const DEBUG_MODE = false; // Globální přepínač pro logování
 
-
-
-
-
-
-
 // --- Cachování DOM elementů ---
 const DOM = {
     audioPlayer: document.getElementById('audioPlayer'),
@@ -59,7 +53,8 @@ const DOM = {
 let currentTrackIndex = 0;
 let isShuffled = false;
 let shuffledIndices = [];
-let favorites = [];
+//let favorites = []; prozatim deaktivovano
+window.favorites = []; // zatím na test nově přidan
 let originalTracks = Array.isArray(window.tracks) ? [...window.tracks] : [];
 let currentPlaylist = [...originalTracks];
 let playlistVisible = true;
@@ -891,3 +886,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 100);
 
 });
+
