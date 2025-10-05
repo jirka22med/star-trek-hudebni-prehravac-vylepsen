@@ -26,11 +26,8 @@
 
 
   <div class="player-container">
-      
       <h1 class="header-title"  >STAR TREK: HUDEBNÍ PŘEHRAVAČ</h1>
     <h2 id="trackTitle">Vyberte skladbu</h2>
-
-
       <div class="time-controls" >
         <span id="currentTime" style="display:inline-block;padding:2px;background:#000;border:2px solid #C00000;color:#fff;margin:0;">
          <span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span>
@@ -40,11 +37,11 @@
           <span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span>
         </span>
       </div>
+      
      <!-- obal/pouzdro-->
       <div id="control-panel" >
            <!-- hl kontejner tlačítek -->
         <div class="controls">
-             
           <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button>
           <button id="play-button" title="Přehrát (Mezerník/P)" style="background:  #4169E1 ;">🚀</button>
           <button id="pause-button" title="Pauza (Mezerník/P)" style="background: #B22222;">🖖⏸️</button>
@@ -245,33 +242,64 @@
     </footer>
           
   </div> </div> </div> 
-    <!-- Firebase SDK - musí být PŘED audioFirebaseFunctions.js -->
+    <!-- ============================================ -->
+<!-- KRITICKÉ SKRIPTY - NESMÍ MÍT DEFER! -->
+<!-- Musí se načíst SYNCHRONNĚ v tomto pořadí -->
+<!-- ============================================ -->
+
+<!-- Firebase SDK - musí být PŘED audioFirebaseFunctions.js -->
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
- <script src="script.js"></script>
-     <script src="myPlaylist.js"></script> 
-    <!-- Teprve potom tvůj soubor -->
-<script src="audioFirebaseFunctions.js"></script>
-           
- <script src="universalni-perfomens-monitor.js" defer ></script>
-    <script src="jirkuv-hlidac.js"></script>
-<!-- NOVÝ: VIZUÁLNÍ TUNER -->
-   <script src="audiou-vizuace.js"></script>  
-  <script src="notificationFix.js"></script>
-<script src="autoFade.js"></script>  
- <!--<script src="bookmarkManager.js"></script> -->  
- <script src="voiceControl.js"></script>   
-    <script src="playlistSettings.js"></script>
-    <script src="pokrocila-sprava-playlistu.js"></script>
 
- <!-- detekce odpojení blutoot a kabel sluchátek/reproduktoru -->
-    <script src="bluetoothDisconnectMonitor.js"></script>
-    
-    <!-- Správá viditelnosti tlačítek -->
-     <script src="buttonVisibilityManager.js"></script>
-    <script src="vyhledavac-skladeb.js"></script>
-      <script src="sprava-rozhrani.js"></script>
+<!-- Hlavní přehrávač - inicializuje globální proměnné (window.tracks, window.favorites) -->
+<script src="script.js"></script>
+
+<!-- Data playlistu - naplňuje window.tracks -->
+<script src="myPlaylist.js"></script>
+
+<!-- Cloud synchronizace - poskytuje API pro ostatní moduly -->
+<script src="audioFirebaseFunctions.js"></script>
+
+<!-- ============================================ -->
+<!-- FEATURE MODULY - MŮŽOU MÍT DEFER -->
+<!-- Tyto skripty se načtou paralelně a spustí po DOM ready -->
+<!-- ============================================ -->
+
+<!-- Performance monitoring -->
+<script src="universalni-perfomens-monitor.js" defer></script>
+
+<!-- Debug wrapper -->
+<script src="jirkuv-hlidac.js" defer></script>
+
+<!-- Audio vizualizace / Tone Meter -->
+<script src="audiou-vizuace.js" defer></script>
+
+<!-- Notifikační systém -->
+<script src="notificationFix.js" defer></script>
+
+<!-- Automatické přechody mezi skladbami -->
+<script src="autoFade.js" defer></script>
+
+<!-- Hlasové ovládání -->
+<script src="voiceControl.js" defer></script>
+
+<!-- Nastavení vzhledu playlistu -->
+<script src="playlistSettings.js" defer></script>
+
+<!-- Pokročilá správa skladeb (CRUD operace) -->
+<script src="pokrocila-sprava-playlistu.js" defer></script>
+
+<!-- Detekce odpojení Bluetooth a kabelových sluchátek/reproduktorů -->
+<script src="bluetoothDisconnectMonitor.js" defer></script>
+
+<!-- Správa viditelnosti tlačítek -->
+<script src="buttonVisibilityManager.js" defer></script>
+
+<!-- Vyhledávač skladeb -->
+<script src="vyhledavac-skladeb.js" defer></script>
+
+<!-- UI management - finalizace rozhraní (měl by být poslední) -->
+<script src="sprava-rozhrani.js" defer></script>
 </body>
 </html>
-
 
