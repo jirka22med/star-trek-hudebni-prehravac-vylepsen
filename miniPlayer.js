@@ -243,34 +243,55 @@ class MiniPlayer {
                     canvas.height = 180;
                     const ctx = canvas.getContext('2d');
                     
-                    const animateCanvas = () => {
+                    // Načtení statického pozadí z GitHub (CORS podporován!)
+                    const bgImage = new Image();
+                    bgImage.crossOrigin = 'anonymous';
+                    bgImage.src = 'https://raw.githubusercontent.com/jirka22med/star-trek-assets/main/image_4k6.jpg';
+                    
+                    bgImage.onerror = () => {
+                        console.error('❌ GitHub obrázek se nepodařilo načíst, používám fallback');
                         ctx.fillStyle = '#0a0e27';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    };
+                    
+                    bgImage.onload = () => {
+                        if (DEBUG_MINI) console.log('✅ GitHub obrázek úspěšně načten!');
+                    };
+                    
+                    const animateCanvas = () => {
+                        // Vykreslení statického pozadí z GitHubu
+                        if (bgImage.complete && bgImage.naturalWidth > 0) {
+                            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+                        } else {
+                            // Fallback zatímco se načítá
+                            ctx.fillStyle = '#0a0e27';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
                         
-                        ctx.fillStyle = '#fff';
-                        for (let i = 0; i < 20; i++) {
-                            const x = Math.sin(i + Date.now() / 1000) * 150 + 160;
-                            const y = Math.cos(i + Date.now() / 1500) * 80 + 90;
-                            ctx.fillRect(x, y, 2, 2);
-                        } 
+                        // Tmavý overlay pro lepší čitelnost textu
+                        ctx.fillStyle = 'rgba(10, 14, 39, 0.5)';
+                        ctx.fillRect(0, 0, 320, 180);
                         
+                        // Logo a název v horní části
                         ctx.fillStyle = '#4ade80';
-                        ctx.font = 'bold 25px Arial';
+                        ctx.font = 'bold 15px Arial';
                         ctx.textAlign = 'center';
-                        ctx.fillText('🖖 STAR TREK', 160, 60);
+                        ctx.fillText('🖖 STAR TREK', 160, 45);
                         
-                        ctx.fillStyle = '#0f3460';
+                        // Header s názvem skladby
+                        ctx.fillStyle = 'rgba(15, 52, 96, 0.9)';
                         ctx.fillRect(0, 0, 320, 30);
                         
                         const trackTitle = document.getElementById('trackTitle');
                         if (trackTitle) {
                             ctx.fillStyle = '#fff';
-                            ctx.font = '25px Arial';
+                            ctx.font = '15px Arial';
                             ctx.textAlign = 'center';
                             const text = trackTitle.textContent.substring(0, 30);
                             ctx.fillText(text, 160, 25);
                         }
                         
+                        // Progress bar
                         const audioPlayer = document.getElementById('audioPlayer');
                         if (audioPlayer && audioPlayer.duration) {
                             const progress = (audioPlayer.currentTime / audioPlayer.duration) * 300;
@@ -294,9 +315,9 @@ class MiniPlayer {
                 
                 await pipVideo.requestPictureInPicture();
                 this.miniPlayerContainer?.classList.add('hidden');
-                window.showNotification?.('Picture-in-Picture aktivován! 🖖 (Star Trek mode)', 'info', 3000);
+                window.showNotification?.('Picture-in-Picture aktivován! 🖖 (GitHub hosting)', 'info', 3000);
                 
-                if (DEBUG_MINI) console.log('PiP: Aktivován s animovanou canvas');
+                if (DEBUG_MINI) console.log('PiP: Aktivován s GitHub pozadím - CORS podporován! 🖖');
                 
             } else if (mainVideo.tagName === 'VIDEO') {
                 await mainVideo.requestPictureInPicture();
