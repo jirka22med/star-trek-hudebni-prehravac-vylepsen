@@ -181,7 +181,25 @@ const BUTTON_CONFIG = {
         category: 'Systém',
         essential: true,
         description: 'Smaže všechna data z Firebase cloudu'
-    } 
+    },
+    'mini-mode-float': {
+        name: '🖼️ přepne na Float',
+        category: 'MiniPlayer',
+        essential: false,
+        description: 'přepne na Float'
+    },
+    'mini-mode-pip': {
+        name: '📺 přepne na plovoucí okno',
+        category: 'MiniPlayer',
+        essential: false,
+        description: 'přepne na plovoucí okno'
+    },
+    'mini-mode-popup': {
+        name: '🪟 otevře nové okno',
+        category: 'MiniPlayer',
+        essential: false,
+        description: 'otevře nové okno prohlížeče'
+    }  
 };
 
 // --- Defaultní viditelnost tlačítek ---
@@ -214,7 +232,12 @@ const DEFAULT_VISIBILITY = {
     'voice-control-toggle': true,
     'voice-commands-help': true,
     'clearAllDataBtn': false,
+    
+    'mini-mode-float': false,
+    'mini-mode-pip': false,
+    'mini-mode-popup': false,
 };
+ 
 
 // --- Načtení uložené konfigurace ---
 let buttonVisibility = JSON.parse(localStorage.getItem('buttonVisibility') || JSON.stringify(DEFAULT_VISIBILITY));
