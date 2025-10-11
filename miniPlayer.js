@@ -1,6 +1,6 @@
 /**
  * miniPlayer.js v2.0 - IN-MEMORY (bez localStorage)
- * Plovoucí mini přehrávač s 3 režimy
+ * Plovoucí mini přehrávač s 3 režimy + sekundární tlačítka
  * Autor: Admirál Claude pro Více Admirála Jiříka
  */
 
@@ -140,8 +140,24 @@ class MiniPlayer {
         const pinBtn = document.getElementById('mini-pin-btn');
         pinBtn?.addEventListener('click', () => this.togglePin());
         
+        // PRIMÁRNÍ: Select dropdown
         const modeSelect = document.getElementById('mini-mode-select');
         modeSelect?.addEventListener('change', (e) => this.switchMode(e.target.value));
+        
+        // SEKUNDÁRNÍ: Jednotlivá tlačítka (backup)
+        const modeFloatBtn = document.getElementById('mini-mode-float');
+        const modePipBtn = document.getElementById('mini-mode-pip');
+        const modePopupBtn = document.getElementById('mini-mode-popup');
+        
+        if (modeFloatBtn) {
+            modeFloatBtn.addEventListener('click', () => this.switchMode('floating'));
+        }
+        if (modePipBtn) {
+            modePipBtn.addEventListener('click', () => this.switchMode('pip'));
+        }
+        if (modePopupBtn) {
+            modePopupBtn.addEventListener('click', () => this.switchMode('popup'));
+        }
         
         const dragHandle = this.miniPlayerContainer.querySelector('.mini-player-drag-handle');
         dragHandle?.addEventListener('mousedown', (e) => this.startDrag(e));
@@ -184,6 +200,12 @@ class MiniPlayer {
         
         if (DEBUG_MINI) console.log(`MiniPlayer: Přepínám do režimu: ${mode}`);
         
+        // Aktualizuj select, pokud existuje
+        const modeSelect = document.getElementById('mini-mode-select');
+        if (modeSelect) {
+            modeSelect.value = mode;
+        }
+        
         switch(mode) {
             case 'floating':
                 this.closePipOrPopup();
@@ -201,17 +223,13 @@ class MiniPlayer {
     
     async activatePiP() {
         try {
-            // Najdi hlavní video element
             const mainVideo = document.getElementById('audioPlayer');
             
             if (!mainVideo) {
                 throw new Error('Hlavní audio player nenalezen');
             }
             
-            // Audio player není video, tak musíme použít alternativu
-            // PiP s audio není nativně podporováno, ale můžeme použít creative řešení
             if (mainVideo.tagName === 'AUDIO') {
-                // Vytvoř skrytý video element
                 let pipVideo = document.getElementById('pip-video-element');
                 if (!pipVideo) {
                     pipVideo = document.createElement('video');
@@ -220,46 +238,39 @@ class MiniPlayer {
                     pipVideo.width = 320;
                     pipVideo.height = 180;
                     
-                    // Vytvoř canvas stream
                     const canvas = document.createElement('canvas');
                     canvas.width = 320;
                     canvas.height = 180;
                     const ctx = canvas.getContext('2d');
                     
-                    // Animovaná canvas - Star Trek styl
                     const animateCanvas = () => {
                         ctx.fillStyle = '#0a0e27';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         
-                        // Hvězdy (random body)
                         ctx.fillStyle = '#fff';
                         for (let i = 0; i < 20; i++) {
                             const x = Math.sin(i + Date.now() / 1000) * 150 + 160;
                             const y = Math.cos(i + Date.now() / 1500) * 80 + 90;
                             ctx.fillRect(x, y, 2, 2);
-                        }
+                        } 
                         
-                        // Text
                         ctx.fillStyle = '#4ade80';
-                        ctx.font = 'bold 18px Arial';
+                        ctx.font = 'bold 25px Arial';
                         ctx.textAlign = 'center';
                         ctx.fillText('🖖 STAR TREK', 160, 60);
                         
-                        // Dynamická horní lišta
                         ctx.fillStyle = '#0f3460';
                         ctx.fillRect(0, 0, 320, 30);
                         
-                        // Aktuální skladba
                         const trackTitle = document.getElementById('trackTitle');
                         if (trackTitle) {
                             ctx.fillStyle = '#fff';
-                            ctx.font = '11px Arial';
+                            ctx.font = '25px Arial';
                             ctx.textAlign = 'center';
                             const text = trackTitle.textContent.substring(0, 30);
-                            ctx.fillText(text, 160, 20);
+                            ctx.fillText(text, 160, 25);
                         }
                         
-                        // Progress bar
                         const audioPlayer = document.getElementById('audioPlayer');
                         if (audioPlayer && audioPlayer.duration) {
                             const progress = (audioPlayer.currentTime / audioPlayer.duration) * 300;
@@ -275,14 +286,12 @@ class MiniPlayer {
                     
                     animateCanvas();
                     
-                    // Sync audio
                     pipVideo.srcObject = canvas.captureStream(24);
                     pipVideo.play();
                     
                     document.body.appendChild(pipVideo);
                 }
                 
-                // Aktivuj PiP
                 await pipVideo.requestPictureInPicture();
                 this.miniPlayerContainer?.classList.add('hidden');
                 window.showNotification?.('Picture-in-Picture aktivován! 🖖 (Star Trek mode)', 'info', 3000);
@@ -290,7 +299,6 @@ class MiniPlayer {
                 if (DEBUG_MINI) console.log('PiP: Aktivován s animovanou canvas');
                 
             } else if (mainVideo.tagName === 'VIDEO') {
-                // Normální video PiP
                 await mainVideo.requestPictureInPicture();
                 this.miniPlayerContainer?.classList.add('hidden');
                 window.showNotification?.('Picture-in-Picture aktivován 📺', 'info', 2000);
@@ -700,8 +708,8 @@ class MiniPlayer {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         window.miniPlayerInstance = new MiniPlayer();
-        if (DEBUG_MINI) console.log('MiniPlayer: Instance vytvořena - verze 2.0 (in-memory)');
-    }, 500);
+        if (DEBUG_MINI) console.log('MiniPlayer: Instance vytvořena - verze 2.0 (in-memory) + sekundární tlačítka');
+    }, 200);
 });
 
 // Export pro případné ruční volání
