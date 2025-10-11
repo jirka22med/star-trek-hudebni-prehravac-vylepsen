@@ -7,7 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Star Trek: Hudební Přehravač</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="miniPlayer.css">     
+  <link rel="stylesheet" href="miniPlayer.css">  
+   <link rel="stylesheet" href="dve-nove-funkce.css">  
 </head>
 <body>
    
@@ -61,7 +62,10 @@
           <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" style="background: #000000;">🗑️</button>
           <button id="perf-monitor-btn">🔍📊</button>
            <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
-             
+          <button id="mini-mode-float">🖼️ Float</button>
+<button id="mini-mode-pip">📺 PiP</button>
+<button id="mini-mode-popup">🪟 Popup</button>
+ 
             
         </div>
        
@@ -236,7 +240,9 @@
         
         <canvas class="tone-meter-visualizer" id="visualizerCanvas"></canvas>
     </div>
-
+<div id="waveform-container">
+    <canvas id="waveform-canvas"></canvas>
+</div>
       
       <div id="notification"></div>
       <div class="fade-indicator">  
@@ -307,6 +313,7 @@
     
     <!-- Plovoucí okno mini Přehravače -->
     <script src="miniPlayer.js"></script>
+     
+     <script src="dve-nove-funkce.js"></script>
 </body>
 </html>
-
