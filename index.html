@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Star Trek: Hudební Přehravač</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="miniPlayer.css">     
 </head>
 <body>
    
@@ -26,8 +27,11 @@
 
 
   <div class="player-container">
+       
       <h1 class="header-title"  >STAR TREK: HUDEBNÍ PŘEHRAVAČ</h1>
     <h2 id="trackTitle">Vyberte skladbu</h2>
+      
+      
       <div class="time-controls" >
         <span id="currentTime" style="display:inline-block;padding:2px;background:#000;border:2px solid #C00000;color:#fff;margin:0;">
          <span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span>
@@ -300,6 +304,9 @@
 
 <!-- UI management - finalizace rozhraní (měl by být poslední) -->
 <script src="sprava-rozhrani.js" defer></script>
+    
+    <!-- Plovoucí okno mini Přehravače -->
+    <script src="miniPlayer.js"></script>
 </body>
 </html>
 
