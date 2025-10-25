@@ -374,8 +374,7 @@ window.tracks = [
 
 > *Přidej screenshots aplikace:*
 ```markdown
-![LCARS Interface](./<img width="1922" height="921" alt="image" src="https://github.com/user-attachments/assets/372ad670-890b-40f6-b8b6-6ce5427a07ef" />
-)
+![LCARS Interface](./screenshots/main-interface.png)
 ![Voice Control](./screenshots/voice-control.png)
 ![Playlist Manager](./screenshots/playlist.png)
 ![Performance Monitor](./screenshots/performance.png)
