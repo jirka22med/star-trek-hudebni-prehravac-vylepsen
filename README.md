@@ -175,19 +175,165 @@ open index.html
 ```javascript
 // myPlaylist.js
 window.tracks = [
-    {
-        title: "Main Theme",
-        artist: "Jerry Goldsmith",
-        src: "./audio/main-theme.mp3",
-        cover: "./covers/main-theme.jpg"
+    { 
+        src: 'https://www.dropbox.com/scl/fi/x0z9ddkz3zfqrvcnb6nr8/Odysea-Kapit-na-Ar-era-1.mp3?rlkey=mlav41qi6qe5ukss3q4qdd8f6&st=44y26ef2&dl=1', 
+        title: 'Odysea-Kapitána-Arčra' 
     },
-    {
-        title: "Warp Speed",
-        artist: "Alexander Courage",
-        src: "./audio/warp-speed.mp3",
-        cover: "./covers/warp-speed.jpg"
+    { 
+        src: 'https://www.dropbox.com/scl/fi/hl4pp862wvlgd3kj2uixj/Hv-zdn-lo-sn.mp3?rlkey=uxfr6emv2h70v9blgmoily2ug&st=h40ynmje&dl=1', 
+        title: 'Hvězdná-Loď-snů' 
+    },
+    { 
+        src: 'https://www.dropbox.com/scl/fi/w6jjzo8avh3rnd70gyva6/Stanice-Hlubok-Vesm-r-9.mp3?rlkey=sy23k7qogrbott7gmj5q7db2v&st=lcr4ygmh&dl=1', 
+        title: 'Stanice-Hluboký-Vesmír-9' 
+    },
+    // Přidej další skladby zde...
+];
+```
+
+### 🔗 **Podporované Zdroje**
+
+| Typ | Příklad | ✅ Podporováno |
+|:----|:--------|:---------------|
+| **Dropbox** | `https://www.dropbox.com/...?dl=1` | ✅ Ano |
+| **Google Drive** | `https://drive.google.com/uc?id=...` | ✅ Ano |
+| **Direct URL** | `https://example.com/song.mp3` | ✅ Ano |
+| **Lokální soubor** | `./audio/song.mp3` | ✅ Ano |
+| **YouTube** | `https://youtube.com/watch?v=...` | ❌ Ne (vyžaduje API) |
+| **Spotify** | `https://open.spotify.com/track/...` | ❌ Ne (vyžaduje API) |
+
+> **💡 Tip:** Pro Dropbox linky vždy použij `?dl=1` na konci URL pro přímé stahování!
+
+### 📋 **Formát Playlistu**
+```javascript
+// Minimální struktura:
+{
+    src: 'URL_K_SOUBORU',    // Povinné - cesta k audio souboru
+    title: 'Název skladby'   // Povinné - zobrazený název
+}
+
+// Rozšířená struktura (volitelné):
+{
+    src: 'URL_K_SOUBORU',
+    title: 'Název skladby',
+    artist: 'Interpret',     // Volitelné - zobrazí se pokud existuje
+    cover: 'URL_K_OBÁLCE',   // Volitelné - cover art
+    duration: '3:45'         // Volitelné - délka skladby
+}
+```
+
+### 🎵 **Příklad Přidání Skladby**
+```javascript
+// 1. Nahraj MP3 na Dropbox
+// 2. Získej sdílený link
+// 3. Změň ?dl=0 na ?dl=1
+// 4. Přidej do pole:
+
+window.tracks = [
+    // Existující skladby...
+    { 
+        src: 'https://www.dropbox.com/scl/fi/TVŮJ_LINK_ZDE/song.mp3?dl=1', 
+        title: 'Nová-Skladba' 
     }
 ];
+```
+
+---
+
+## 🎯 **KOMPLETNÍ PŘÍKLAD S VÍCE SKLADBAMI:**
+```javascript
+// myPlaylist.js - Star Trek Soundtrack Collection
+window.tracks = [
+    // Star Trek: Enterprise
+    { 
+        src: 'https://www.dropbox.com/scl/fi/x0z9ddkz3zfqrvcnb6nr8/Odysea-Kapit-na-Ar-era-1.mp3?rlkey=mlav41qi6qe5ukss3q4qdd8f6&st=44y26ef2&dl=1', 
+        title: 'Odysea-Kapitána-Arčra',
+        artist: 'Enterprise Theme'
+    },
+    
+    // Star Trek: The Original Series
+    { 
+        src: 'https://www.dropbox.com/scl/fi/hl4pp862wvlgd3kj2uixj/Hv-zdn-lo-sn.mp3?rlkey=uxfr6emv2h70v9blgmoily2ug&st=h40ynmje&dl=1', 
+        title: 'Hvězdná-Loď-snů',
+        artist: 'TOS Theme'
+    },
+    
+    // Star Trek: Deep Space Nine
+    { 
+        src: 'https://www.dropbox.com/scl/fi/w6jjzo8avh3rnd70gyva6/Stanice-Hlubok-Vesm-r-9.mp3?rlkey=sy23k7qogrbott7gmj5q7db2v&st=lcr4ygmh&dl=1', 
+        title: 'Stanice-Hluboký-Vesmír-9',
+        artist: 'DS9 Theme'
+    },
+    
+    // Přidej další Star Trek tracky...
+];
+```
+
+---
+
+## 🔧 **TROUBLESHOOTING**
+
+### ❌ **"Skladba se nenačte"**
+```javascript
+// Zkontroluj:
+1. ✅ URL končí na ?dl=1 (ne ?dl=0)
+2. ✅ Link je veřejný (Dropbox sdílení aktivní)
+3. ✅ Soubor je ve formátu .mp3, .ogg nebo .wav
+4. ✅ Žádné překlepy v URL
+```
+
+### ❌ **"CORS Error"**
+```javascript
+// Řešení pro Dropbox:
+// ❌ Špatně: ?dl=0
+// ✅ Správně: ?dl=1
+
+// Dropbox automaticky vrací správné CORS headery s ?dl=1
+```
+
+### ❌ **"Některé skladby nefungují na mobilu"**
+```javascript
+// iOS Safari má limity:
+// - Maximální velikost souboru: ~50 MB
+// - Podporované formáty: MP3, AAC
+// - Streaming může vyžadovat user gesture (tap)
+
+// Řešení: Komprimuj MP3 na nižší bitrate (128-192 kbps)
+```
+
+---
+
+## 📊 **DOPORUČENÉ NASTAVENÍ AUDIO:**
+
+| Parametr | Hodnota | Proč |
+|:---------|:--------|:-----|
+| **Formát** | MP3 | Nejlepší kompatibilita |
+| **Bitrate** | 192 kbps | Dobrá kvalita + malá velikost |
+| **Sample Rate** | 44.1 kHz | Standard pro hudbu |
+| **Kanály** | Stereo | Plný zážitek |
+| **Maximální velikost** | 30 MB | Rychlé načítání |
+
+---
+
+## 🎵 **ZÍSKÁNÍ AUDIO SOUBORŮ:**
+
+### **1. YouTube → MP3**
+```
+1. Najdi Star Trek soundtrack na YouTube
+2. Použij: youtube-dl nebo online converter
+3. Nahraj na Dropbox
+4. Získej link s ?dl=1
+```
+
+### **2. Vlastní Nahrávky**
+```
+1. Nahraj MP3 do Dropbox složky
+2. Pravé tlačítko → Sdílet
+3. Zkopíruj link
+4. Změň ?dl=0 na ?dl=1
+```
+
+### **3. Free Music Archives**
 ```
 
 ---
