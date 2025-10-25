@@ -370,15 +370,14 @@ window.tracks = [
 
 ---
 
-## 📸 Screenshots
+# 📸 Screenshots
 
 > *Přidej screenshots aplikace:*
-```markdown
-![Ukázka hlavního rozhraní Star Trek přehrávače - LCARS](https://github.com/jirka22med/star-trek-hudebni-prehravac-vylepsen/blob/main/main-interface.png?raw=true)
+
+![Ukázka hlavního rozhraní Star Trek přehrávače - LCARS](./main-interface.png)
 ![Voice Control](./screenshots/voice-control.png)
 ![Playlist Manager](./screenshots/playlist.png)
 ![Performance Monitor](./screenshots/performance.png)
-```
 
 ---
 
