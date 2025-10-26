@@ -199,6 +199,12 @@ const BUTTON_CONFIG = {
         category: 'MiniPlayer',
         essential: false,
         description: 'otevře nové okno prohlížeče'
+    },
+    'playlist-sync-button': {
+        name: 'Synchronizace',
+        category: 'Systém',
+        essential: false,
+        description: 'manuální kontrola nad synchronizací playlistu'
     }  
 };
 
@@ -236,6 +242,8 @@ const DEFAULT_VISIBILITY = {
     'mini-mode-float': false,
     'mini-mode-pip': false,
     'mini-mode-popup': false,
+    'playlist-sync-button': false,
+     
 };
  
 
