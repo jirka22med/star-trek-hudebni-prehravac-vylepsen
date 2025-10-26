@@ -104,27 +104,102 @@ function checkAndFixTracks(trackList) {
     if (DEBUG_MODE && fixedUrls > 0) console.log(`checkAndFixTracks: Opraveno ${fixedUrls} URL adres.`);
 }
 
-// --- loadAudioData ---
+// --- loadAudioData --- UPRAVENÁ VERZE s prioritou myPlaylist.js
 async function loadAudioData() {
     if (DEBUG_MODE) console.log("loadAudioData: Načítám data přehrávače.");
-    originalTracks = window.tracks;
+    
+    // ✅ ULOŽÍME PŮVODNÍ PLAYLIST Z myPlaylist.js PŘED načtením z cloudu
+    const originalPlaylistFromFile = window.tracks ? [...window.tracks] : [];
+    const originalFileCount = originalPlaylistFromFile.length;
+    
+    // Vytvoříme hash pro porovnání (jednoduchý - počet + první a poslední skladba)
+    const originalFileHash = originalFileCount > 0 
+        ? `${originalFileCount}-${originalPlaylistFromFile[0]?.title || ''}-${originalPlaylistFromFile[originalFileCount-1]?.title || ''}`
+        : 'empty';
+    
+    console.log(`🖖 loadAudioData: Původní playlist z myPlaylist.js má ${originalFileCount} skladeb`);
+    console.log(`🖖 loadAudioData: Hash lokálního playlistu: ${originalFileHash}`);
+    
+    originalTracks = originalPlaylistFromFile;
     currentPlaylist = [...originalTracks];
     let firestoreLoaded = { playlist: false, favorites: false, settings: false };
 
     try {
         const loadedPlaylist = await window.loadPlaylistFromFirestore?.();
         if (loadedPlaylist?.length > 0) {
-            window.tracks = loadedPlaylist;
+            const cloudCount = loadedPlaylist.length;
+            const cloudHash = `${cloudCount}-${loadedPlaylist[0]?.title || ''}-${loadedPlaylist[cloudCount-1]?.title || ''}`;
+            
+            console.log(`☁️ loadAudioData: Cloud playlist má ${cloudCount} skladeb`);
+            console.log(`☁️ loadAudioData: Hash cloud playlistu: ${cloudHash}`);
+            
+            // ✅ ROZHODOVACÍ LOGIKA - priorita má myPlaylist.js
+            if (originalFileCount === 0) {
+                // Lokální playlist je prázdný → použij cloud
+                console.log("⬇️ loadAudioData: Lokální playlist prázdný, načítám z cloudu");
+                window.tracks = loadedPlaylist;
+                checkAndFixTracks(window.tracks);
+                firestoreLoaded.playlist = true;
+                
+            } else if (originalFileHash === cloudHash) {
+                // Playlisty jsou identické
+                console.log("✅ loadAudioData: Playlisty jsou IDENTICKÉ (cloud = lokální)");
+                window.tracks = originalPlaylistFromFile;
+                checkAndFixTracks(window.tracks);
+                firestoreLoaded.playlist = true;
+                
+            } else if (originalFileCount > cloudCount) {
+                // Lokální má VÍCE skladeb → použij lokální a označ pro sync
+                console.log("🚀 loadAudioData: Lokální playlist má VÍCE skladeb → používám LOKÁLNÍ");
+                console.log(`   Lokální: ${originalFileCount} vs Cloud: ${cloudCount} skladeb`);
+                window.tracks = originalPlaylistFromFile;
+                checkAndFixTracks(window.tracks);
+                window.PLAYLIST_NEEDS_SYNC = true; // Příznak pro sync
+                
+            } else if (originalFileCount < cloudCount) {
+                // Cloud má více → VAROVÁNÍ, ale stále priorita lokální!
+                console.warn("⚠️ loadAudioData: Cloud má více skladeb, ale POUŽÍVÁM LOKÁLNÍ (myPlaylist.js má prioritu)");
+                console.warn(`   Lokální: ${originalFileCount} vs Cloud: ${cloudCount} skladeb`);
+                console.warn("   💡 Pokud chceš cloud data, smaž myPlaylist.js nebo refresh bez něj");
+                window.tracks = originalPlaylistFromFile;
+                checkAndFixTracks(window.tracks);
+                window.PLAYLIST_NEEDS_SYNC = true;
+                
+                // Zobrazíme notifikaci
+                if (window.showNotification) {
+                    window.showNotification(
+                        `⚠️ myPlaylist.js (${originalFileCount}) vs Cloud (${cloudCount}) - Používám LOKÁLNÍ!`, 
+                        'warn', 
+                        5000
+                    );
+                }
+                
+            } else {
+                // Stejný počet, ale jiný obsah → priorita lokální
+                console.log("🔄 loadAudioData: Playlisty se liší, ale používám LOKÁLNÍ (myPlaylist.js)");
+                console.log(`   Rozdíly v obsahu (hash se liší)`);
+                window.tracks = originalPlaylistFromFile;
+                checkAndFixTracks(window.tracks);
+                window.PLAYLIST_NEEDS_SYNC = true;
+            }
+            
+        } else {
+            // Cloud je prázdný → použij lokální
+            console.log("📝 loadAudioData: Cloud playlist je prázdný, používám myPlaylist.js");
+            window.tracks = originalPlaylistFromFile;
             checkAndFixTracks(window.tracks);
-            firestoreLoaded.playlist = true;
-            if (DEBUG_MODE) console.log("loadAudioData: Playlist načten z Firestore.");
+            window.PLAYLIST_NEEDS_SYNC = true; // Nahrát do cloudu
         }
+        
+        // Načteme oblíbené
         const loadedFavorites = await window.loadFavoritesFromFirestore?.();
         if (loadedFavorites?.length > 0) {
             favorites = [...loadedFavorites];
             firestoreLoaded.favorites = true;
             if (DEBUG_MODE) console.log("loadAudioData: Oblíbené načteny z Firestore.");
         }
+        
+        // Načteme nastavení přehrávače
         const loadedSettings = await window.loadPlayerSettingsFromFirestore?.();
         if (loadedSettings) {
             isShuffled = loadedSettings.isShuffled ?? isShuffled;
@@ -137,23 +212,32 @@ async function loadAudioData() {
             firestoreLoaded.settings = true;
             if (DEBUG_MODE) console.log("loadAudioData: Nastavení načteno z Firestore.");
         }
+        
     } catch (error) {
         if (DEBUG_MODE) console.error("loadAudioData: Chyba při načítání z Firestore:", error);
         window.showNotification("Chyba při načítání dat z cloudu.", 'error');
+        
+        // Při chybě použijeme lokální playlist
+        console.log("🔧 loadAudioData: Kvůli chybě používám lokální playlist");
+        window.tracks = originalPlaylistFromFile;
+        checkAndFixTracks(window.tracks);
     }
 
-    if (!firestoreLoaded.playlist) {
+    // Fallback na localStorage (pokud Firebase selhal úplně)
+    if (!firestoreLoaded.playlist && originalFileCount === 0) {
         const savedPlaylist = JSON.parse(localStorage.getItem('currentPlaylist') || '[]');
         if (savedPlaylist.length > 0) {
             window.tracks = [...savedPlaylist];
             checkAndFixTracks(window.tracks);
-            if (DEBUG_MODE) console.log("loadAudioData: Playlist načten z LocalStorage.");
+            if (DEBUG_MODE) console.log("loadAudioData: Playlist načten z LocalStorage (fallback).");
         }
     }
+    
     if (!firestoreLoaded.favorites) {
         favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
         if (DEBUG_MODE) console.log("loadAudioData: Oblíbené načteny z LocalStorage.");
     }
+    
     if (!firestoreLoaded.settings) {
         const savedSettings = JSON.parse(localStorage.getItem('playerSettings') || '{}');
         isShuffled = savedSettings.isShuffled ?? isShuffled;
@@ -166,13 +250,42 @@ async function loadAudioData() {
         if (DEBUG_MODE) console.log("loadAudioData: Nastavení načteno z LocalStorage.");
     }
 
+    // Aktualizujeme reference
     originalTracks = window.tracks;
     currentPlaylist = [...originalTracks];
 
-    if (!firestoreLoaded.playlist || !firestoreLoaded.favorites || !firestoreLoaded.settings) {
-        if (DEBUG_MODE) console.log("loadAudioData: Ukládám data do Firestore.");
+    // ✅ AUTOMATICKÁ SYNCHRONIZACE, pokud je potřeba
+    if (window.PLAYLIST_NEEDS_SYNC) {
+        console.log("🔄 loadAudioData: Playlist vyžaduje synchronizaci, plánujem upload...");
+        
+        // Uložíme do Firestore (po 2 sekundách, aby se vše inicializovalo)
+        setTimeout(async () => {
+            if (DEBUG_MODE) console.log("loadAudioData: Spouštím automatickou synchronizaci playlistu...");
+            try {
+                await window.savePlaylistToFirestore?.(window.tracks);
+                console.log("✅ loadAudioData: Playlist automaticky synchronizován do cloudu!");
+                window.PLAYLIST_NEEDS_SYNC = false;
+                
+                if (window.showNotification) {
+                    window.showNotification(
+                        `🖖 Playlist automaticky synchronizován (${window.tracks.length} skladeb)`, 
+                        'info', 
+                        3000
+                    );
+                }
+            } catch (error) {
+                console.error("❌ loadAudioData: Chyba při automatické synchronizaci:", error);
+            }
+        }, 2000);
+        
+    } else if (!firestoreLoaded.playlist || !firestoreLoaded.favorites || !firestoreLoaded.settings) {
+        // Standardní save pro ostatní data
+        if (DEBUG_MODE) console.log("loadAudioData: Ukládám zbylá data do Firestore.");
         await debounceSaveAudioData();
     }
+    
+    // Finální log
+    console.log(`🎵 loadAudioData: HOTOVO - Aktivní playlist má ${window.tracks.length} skladeb`);
 }
 
 // --- saveAudioData ---
