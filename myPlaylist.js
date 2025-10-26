@@ -1,3 +1,7 @@
+// 🖖 OCHRANA PLAYLISTU - Zabraňuje přepsání Firestorem
+window.PLAYLIST_SOURCE = 'myPlaylist.js';
+window.PLAYLIST_VERSION = new Date().toISOString(); // Timestamp změny
+
 window.tracks = [
 { src: 'https://www.dropbox.com/scl/fi/x0z9ddkz3zfqrvcnb6nr8/Odysea-Kapit-na-Ar-era-1.mp3?rlkey=mlav41qi6qe5ukss3q4qdd8f6&st=44y26ef2&dl=1', title: 'Odysea-Kapitána-Arčra' },
 { src: 'https://www.dropbox.com/scl/fi/hl4pp862wvlgd3kj2uixj/Hv-zdn-lo-sn.mp3?rlkey=uxfr6emv2h70v9blgmoily2ug&st=h40ynmje&dl=1', title: 'Hvězdná-Loď-snů' },
@@ -510,11 +514,20 @@ window.tracks = [
  { src: 'https://www.dropbox.com/scl/fi/x2g34bc4ytby31s41kv2f/nova-pisnicka-9.mp3?rlkey=zo3h814apvj2xc91rw3t5wedm&st=5nhvjwmw&dl=1', title: 'Děti hvězd v.9' },
  { src: 'https://www.dropbox.com/scl/fi/70hd4e5zeugeo9hnnd1yy/nova-pisnicka-10.mp3?rlkey=ldceoekkji1r9qvky8psvdcn0&st=3l9x5s4g&dl=1', title: 'Děti hvězd v.10' },
 
-            
-    ]
+ { src: 'https://www.dropbox.com/scl/fi/8iyu23gtnh1i3npqfvi6l/Louisiana-sobotni-noc-v.1.mp3?rlkey=a0pirp6pb2mppckyf3t7ceep8&st=ejl11phh&dl=1', title: 'Louisiana sobotní noc v.1' },  
+ { src: 'https://www.dropbox.com/scl/fi/q9nrhhs1opwerkp1yvy6k/Louisiana-sobotni-noc-v.2.mp3?rlkey=zxn97h5tuc3yml66ihsvj6a6y&st=2f7wkbrt&dl=1', title: 'Louisiana sobotní noc v.2' },
+ { src: 'https://www.dropbox.com/scl/fi/jch31uy83ueqxz4lwslcs/Louisiana-sobotni-noc-v.3.mp3?rlkey=2c9u8hbchlozwve8m296kqxja&st=km89xlx1&dl=1', title: 'Louisiana sobotní noc v.3' },
+ { src: 'https://www.dropbox.com/scl/fi/qjpbolwurcd2y3dw4wrop/Louisiana-sobotni-noc-v.4.mp3?rlkey=zdqg3cfhxdnqbui1nl6ys5qd0&st=z613c91q&dl=1', title: 'Louisiana sobotní noc v.4' },
+ { src: 'https://www.dropbox.com/scl/fi/5axfjtpq27cekvg51oye8/Louisiana-sobotni-noc-v.5.mp3?rlkey=m3avrd8myapqrfu0srmju7k6i&st=e3v05rkm&dl=1', title: 'Louisiana sobotní noc v.5' },
+ { src: 'https://www.dropbox.com/scl/fi/fiy4nctexclcggd0m6jdy/Louisiana-sobotni-noc-v.6.mp3?rlkey=yel3z35gidlqhjdw8a6xscn7g&st=8cug4txf&dl=1', title: 'Louisiana sobotní noc v.6' },
+ { src: 'https://www.dropbox.com/scl/fi/0p5751ypas7c9mfuk3o92/Louisiana-sobotni-noc-v.7.mp3?rlkey=26d70avekrpir3nt3h69h0h1w&st=7njolyyf&dl=1', title: 'Louisiana sobotní noc v.7' },
+ { src: 'https://www.dropbox.com/scl/fi/1relupal07hd5ghixpbgs/Louisiana-sobotni-noc-v.8.mp3?rlkey=tity8gk9847dzj7usznzn16kw&st=04whidfi&dl=1', title: 'Louisiana sobotní noc v.8' },
+ { src: 'https://www.dropbox.com/scl/fi/g1vxmp59d0wlktikrlvqc/Louisiana-sobotni-noc-v.9.mp3?rlkey=vb93d18aztmpzf5rf2qzeicb4&st=mp58sh85&dl=1', title: 'Louisiana sobotní noc v.9' }, 
+    
+];
 
 
-
+console.log(`🖖 myPlaylist.js načten: ${window.tracks.length} skladeb (verze: ${window.PLAYLIST_VERSION})`);
  
 
 
