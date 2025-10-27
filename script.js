@@ -432,21 +432,43 @@ function populatePlaylist(listToDisplay) {
     }
     if (!DOM.playlist.classList.contains('hidden')) DOM.playlist.classList.add('hidden');
     DOM.playlist.innerHTML = '';
+    
     if (!listToDisplay?.length) {
         DOM.playlist.innerHTML = '<div class="playlist-item" style="justify-content: center; cursor: default;">Žádné skladby v playlistu</div>';
     } else {
         const fragment = document.createDocumentFragment();
-        listToDisplay.forEach(track => {
+        
+        listToDisplay.forEach((track, index) => {
             const item = document.createElement('div');
             item.className = 'playlist-item';
             item.dataset.originalSrc = track.src;
+            
             const originalIndex = originalTracks.findIndex(ot => ot.title === track.title && ot.src === track.src);
             if (originalIndex === currentTrackIndex && DOM.audioPlayer && !DOM.audioPlayer.paused) {
                 item.classList.add('active');
             }
+            
+            // ðŸ'ˆ NOVÝ KÓD - Číslo skladby
+            const trackNumber = document.createElement('span');
+            trackNumber.className = 'track-number';
+            trackNumber.textContent = `${index + 1}.`;
+            item.appendChild(trackNumber);
+            
+            // Název skladby
             const titleSpan = document.createElement('span');
+            titleSpan.className = 'track-title';
             titleSpan.textContent = track.title;
             item.appendChild(titleSpan);
+            
+            // ðŸ'ˆ NOVÝ KÓD - Délka skladby (pokud existuje)
+            if (track.duration) {
+                const durationSpan = document.createElement('span');
+                durationSpan.className = 'track-duration';
+                durationSpan.textContent = track.duration;
+                item.appendChild(durationSpan);
+            }
+            
+            // Tlačítko oblíbených
             const favButton = document.createElement('button');
             favButton.className = 'favorite-button';
             favButton.title = 'Přidat/Odebrat z oblíbených';
@@ -457,14 +479,19 @@ function populatePlaylist(listToDisplay) {
                 await toggleFavorite(track.title);
             };
             item.appendChild(favButton);
+            
+            // Kliknutí na skladbu
             item.addEventListener('click', () => {
                 if (DEBUG_MODE) console.log(`populatePlaylist: Playlist item clicked for "${track.title}".`);
                 if (originalIndex !== -1) playTrack(originalIndex);
             });
+            
             fragment.appendChild(item);
         });
+        
         DOM.playlist.appendChild(fragment);
     }
+    
     updateActiveTrackVisuals();
     setTimeout(() => {
         DOM.playlist.classList.remove('hidden');
@@ -1017,3 +1044,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         monitorPerformance();
+
+
+ 
