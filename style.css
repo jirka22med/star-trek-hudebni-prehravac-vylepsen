@@ -1607,3 +1607,36 @@ body.light { @extend .light-theme; }
             color: #0f0;
     z-index: 99999;
         }
+
+/* ðŸŽ¨ CSS STYLY PRO DÉLKU SKLADEB - přidej do styles.css */
+
+.playlist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+ 
+/* ðŸ'ˆ NOVÝ STYL - Délka skladby */
+.track-duration {
+    color: red;
+    font-size: 15px;
+    
+    font-family: 'Courier New', monospace;
+    background-color: rgba(0, 255, 136, 0.1);
+     
+   
+     
+    text-align: center;
+}
+
+/* Aktivní skladba */
+.playlist-item.active .track-duration {
+    background-color: rgba(0, 255, 136, 0.3);
+    color: red;
+    font-weight: bold;
+    font-size: 15px;
+}
