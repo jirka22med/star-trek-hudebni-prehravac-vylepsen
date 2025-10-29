@@ -47,21 +47,21 @@
       <div id="control-panel" >
            <!-- hl kontejner tlačítek -->
         <div class="controls">
-          <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button>
-          <button id="play-button" title="Přehrát (Mezerník/P)" style="background:  #4169E1 ;">🚀</button>
-          <button id="pause-button" title="Pauza (Mezerník/P)" style="background: #B22222;">🖖⏸️</button>
-          <button id="next-button" title="Další (Šipka vpravo)" style="background:#00008B ;">▶️➡️</button>
-          <button id="loop-button" title="Opakovat (L)" style="background: #00FF00;">🔁</button>
-          <button id="shuffle-button" title="Náhodně (Vypnuto)" style="background: #FF8C00;">🔀</button>
-          <button id="reset-button" title="Restartovat skladbu (R)" style="background: #FF3399 ;">🔄</button>
-          <button id="fullscreen-toggle" title="Celá obrazovka (F)" style="background: #D2691E ;">⛶</button>
-          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" style="background: #663300 ;">📋</button>
-          <button id="reload-button" title="Obnovit stránku" style="background: #CC9966;">🔄</button>
-          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" style="background: #CC6633 ;">📜</button> 
-          <button id="timer-button" title="Časovač vypnutí (T)" style="background: #FFD700 ;">⏰</button>
-          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" style="background: #000000;">🗑️</button>
+          <button id="prev-button" title="Předchozí (Šipka vlevo)" >◀️⬅️</button>
+          <button id="play-button" title="Přehrát (Mezerník/P)" >🚀</button>
+          <button id="pause-button" title="Pauza (Mezerník/P)" >🖖⏸️</button>
+          <button id="next-button" title="Další (Šipka vpravo)" >▶️➡️</button>
+          <button id="loop-button" title="Opakovat (L)" >🔁</button>
+          <button id="shuffle-button" title="Náhodně (Vypnuto)" >🔀</button>
+          <button id="reset-button" title="Restartovat skladbu (R)" >🔄</button>
+          <button id="fullscreen-toggle" title="Celá obrazovka (F)" >⛶</button>
+          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" >📋</button>
+          <button id="reload-button" title="Obnovit stránku" >🔄</button>
+          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" >📜</button> 
+          <button id="timer-button" title="Časovač vypnutí (T)" >⏰</button>
+          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" >🗑️</button>
           <button id="perf-monitor-btn">🔍📊</button>
-           <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
+           <button id="jirik-manual-opener-btn" >🧾</button>  
           <button id="mini-mode-float">🖼️ Float</button>
 <button id="mini-mode-pip">📺 PiP</button>
 <button id="mini-mode-popup">🪟 Popup</button>
@@ -263,9 +263,13 @@
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
 
+ <script src="prednacitani-pisnicek.js"></script>     
+    
 <!-- Hlavní přehrávač - inicializuje globální proměnné (window.tracks, window.favorites) -->
 <script src="script.js"></script>
 
+    
+    
 <!-- Data playlistu - naplňuje window.tracks -->
 <script src="myPlaylist.js"></script>
 
@@ -314,10 +318,11 @@
 <script src="sprava-rozhrani.js" defer></script>
     
     <!-- Plovoucí okno mini Přehravače -->
-    <script src="miniPlayer.js"></script>
+    <script src="miniPlayer.js" defer></script>
  
     
-    <script src="playlistSync.js"></script>
+    <script src="playlistSync.js" defer></script>
+    <script src="dve-nove-funkce.js" defer></script>
 </body>
 </html>
 
