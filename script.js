@@ -1,4 +1,4 @@
-const DEBUG_MODE = false; // Globální přepínač pro logování
+const DEBUG_MODE = true; // Globální přepínač pro logování
 
 // --- Cachování DOM elementů ---
 const DOM = {
@@ -1133,3 +1133,4 @@ function monitorPerformance() {
 }
 
 monitorPerformance();
+
