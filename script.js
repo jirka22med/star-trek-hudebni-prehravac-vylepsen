@@ -1,4 +1,4 @@
-const DEBUG_MODE = true; // Globální přepínač pro logování
+const DEBUG_MODE = true ; // Globální přepínač pro logování
 
 // --- Cachování DOM elementů ---
 const DOM = {
@@ -39,10 +39,36 @@ const DOM = {
         start: document.getElementById('timer-start'),
         stop: document.getElementById('timer-stop'),
         presets: {
+            'timer-1': 1,
+            'timer-2': 2,
+            'timer-3': 3,
+            'timer-4': 4,
             'timer-5': 5,
+            'timer-6': 6,
+            'timer-7': 7,
+            'timer-8': 8,
+            'timer-9': 9,
+            'timer-10': 10,
+            'timer-11': 11,
+            'timer-12': 12,
+            'timer-13': 13,
+            'timer-14': 14,
             'timer-15': 15,
+            'timer-16': 16,
+            'timer-17': 17,
+            'timer-18': 18,
+            'timer-19': 19,
+            'timer-20': 20,
+            'timer-21': 21,
+            'timer-22': 22,
+            'timer-23': 23,
+            'timer-24': 24,
+            'timer-25': 25,
+            'timer-26': 26,
+            'timer-27': 27,
+            'timer-28': 28,
+            'timer-29': 29,
             'timer-30': 30,
-            'timer-60': 60
         }
     },
     favoritesButton: document.createElement('button'),
@@ -1133,4 +1159,3 @@ function monitorPerformance() {
 }
 
 monitorPerformance();
-
