@@ -1112,14 +1112,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 100);
 });
 
-// 🚀 PRELOADER - Vizuální indikátor načtených skladeb
+// 🚀 PRELOADER - Vizuální indikátor načtených skladeb (OPRAVENO)
 window.addEventListener('track-preloaded', (e) => {
     const { src, title } = e.detail;
     
     const playlistItems = document.querySelectorAll('.playlist-item');
     playlistItems.forEach(item => {
         if (item.dataset.originalSrc === src) {
-            if (!item.querySelector('.preload-indicator')) {
+            const titleSpan = item.querySelector('.track-title');
+            if (!titleSpan) return;
+            
+            // Odstraň všechny staré indikátory z této skladby
+            const oldIndicators = titleSpan.querySelectorAll('.preload-indicator, .preload-lightning');
+            oldIndicators.forEach(ind => ind.remove());
+            
+            // Přidej nový zelený indikátor
+            if (!titleSpan.querySelector('.preload-indicator')) {
                 const indicator = document.createElement('span');
                 indicator.className = 'preload-indicator';
                 indicator.textContent = '⚡';
@@ -1127,18 +1135,22 @@ window.addEventListener('track-preloaded', (e) => {
                 indicator.style.marginLeft = '5px';
                 indicator.style.color = '#00ff00';
                 indicator.style.fontSize = '0.8em';
-                const titleSpan = item.querySelector('.track-title');
-                if (titleSpan) titleSpan.appendChild(indicator);
+                titleSpan.appendChild(indicator);
+                
+                // Automaticky odstraň po 3 sekundách
+                setTimeout(() => {
+                    if (indicator.parentElement) {
+                        indicator.remove();
+                    }
+                }, 3000);
             }
         }
     });
-});
-
-// 🚀 PRELOADER - Cleanup při odchodu
-window.addEventListener('beforeunload', () => {
-    if (window.audioPreloader) {
-        window.audioPreloader.clearCache();
-    }
+    
+    // Vyčisti všechny staré blesky z jiných skladeb
+    document.querySelectorAll('.preload-lightning').forEach(lightning => {
+        lightning.remove();
+    });
 });
 
 // Performance monitoring (pouze pro debug)
