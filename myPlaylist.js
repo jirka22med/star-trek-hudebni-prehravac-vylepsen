@@ -540,10 +540,22 @@ duration: '03:54' },
  { src: 'https://www.dropbox.com/scl/fi/jcyh9dn08290fzejj7kgt/Louisiana-sobotni-noc-v.17-top.8.mp3?rlkey=eudwnjsdzuqfamzjr93nhw7id&st=1dw36j3a&dl=1', title: 'Louisiana sobotní noc v.17-top.08' },
  { src: 'https://www.dropbox.com/scl/fi/x8714w1z6wl9c7hronp4h/Louisiana-sobotni-noc-v.18-top.9.mp3?rlkey=z358m1btvtz7ldsk1wb5v5qdd&st=njjinnxf&dl=1', title: 'Louisiana sobotní noc v.18-top.09' },
  { src: 'https://www.dropbox.com/scl/fi/p2tgixfevp4mw6zkvrlbs/Louisiana-sobotni-noc-v.19-top.10.mp3?rlkey=ekemn7rowhy0xtgx7xvohc1v8&st=zk1d2ztj&dl=1', title: 'Louisiana sobotní noc v.19-top.10' },    
+
+ { src: 'https://www.dropbox.com/scl/fi/nylusttacfmovfq1n2osf/HVEZDNA-FLOTILA-NAVZDY-v.1.mp3?rlkey=7iw38b8c3wf3apnmknm1rowbn&st=5sbgl2x8&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.1' },
+ { src: 'https://www.dropbox.com/scl/fi/ppbw1dkaxmbyfxicvukl4/HVEZDNA-FLOTILA-NAVZDY-v.2.mp3?rlkey=p26uskhn5l46ugnzml1pcdxrc&st=x6l62vex&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.2' },
+ { src: 'https://www.dropbox.com/scl/fi/6dht2iy7sin5u3f1yzcqe/HVEZDNA-FLOTILA-NAVZDY-v.3.mp3?rlkey=0cb0a43smj0oi6ksobgyo1d2o&st=8x14klct&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.3' },
+ { src: 'https://www.dropbox.com/scl/fi/fehw2xv2ijxik5em4290m/HVEZDNA-FLOTILA-NAVZDY-v.4.mp3?rlkey=5hvy01ch9575vwasl1cj8kg0c&st=5vx8m461&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.4' },
+ { src: 'https://www.dropbox.com/scl/fi/w5kksozadjph5vb41arbz/HVEZDNA-FLOTILA-NAVZDY-v.5.mp3?rlkey=vpyfnks9n45q343nni7z81vlt&st=bjm1y35v&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.5' },
+ { src: 'https://www.dropbox.com/scl/fi/bpu2y05x7k3jqpiqqsmkt/HVEZDNA-FLOTILA-NAVZDY-v.6.mp3?rlkey=brs8oimqbxe0qkyzpinw7m2k0&st=nmav3zi8&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.6' },
+ { src: 'https://www.dropbox.com/scl/fi/kx7zn7u8aboiz83i1wmtv/HVEZDNA-FLOTILA-NAVZDY-v.7.mp3?rlkey=kn9h5p6ws2o53a7jhfnvrbxz2&st=nowc96cq&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.7' },          
+ { src: 'https://www.dropbox.com/scl/fi/7bngpfjtk9wmn6212n06r/HVEZDNA-FLOTILA-NAVZDY-v.8.mp3?rlkey=sq1da27fx83ef4dv9mcuslolt&st=oto5ihq7&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.8' },
+
+           
 ];
 
 
 console.log(`🖖 myPlaylist.js načten: ${window.tracks.length} skladeb (verze: ${window.PLAYLIST_VERSION})`);
  
+
 
 
