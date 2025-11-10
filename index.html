@@ -8,10 +8,43 @@
   <title>Star Trek: Hudební Přehravač</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="miniPlayer.css">  
-   
+  <link rel="stylesheet" href="loadingScreen.css">    
 </head>
 <body>
    
+     <div id="lcars-loading-screen">
+        <!-- Corner Decorations -->
+        <div class="lcars-corner lcars-corner-tl"></div>
+        <div class="lcars-corner lcars-corner-tr"></div>
+        <div class="lcars-corner lcars-corner-bl"></div>
+        <div class="lcars-corner lcars-corner-br"></div>
+
+        <!-- LCARS Header -->
+        <div class="lcars-header">
+            <div class="lcars-block lcars-block-1"></div>
+            <div class="lcars-block lcars-block-2"></div>
+            <div class="lcars-block lcars-block-3">STAR TREK AUDIO</div>
+        </div>
+
+        <!-- Main Console -->
+        <div class="lcars-console">
+            <!-- System Logs -->
+            <div class="lcars-logs" id="lcars-logs">
+                <!-- Logs budou přidávány dynamicky -->
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="lcars-progress-container">
+                <div class="lcars-progress-bar" id="lcars-progress-bar"></div>
+                <div class="lcars-progress-text" id="lcars-progress-text">0%</div>
+            </div>
+
+            <!-- System Status -->
+            <div class="lcars-status" id="lcars-status">INITIALIZING SYSTEMS...</div>
+        </div>
+    </div>
+
+    
  <div class="player-content-wrapper">
         
     
@@ -47,35 +80,26 @@
       <div id="control-panel" >
            <!-- hl kontejner tlačítek -->
         <div class="controls">
-          <button id="prev-button" title="Předchozí (Šipka vlevo)" >◀️⬅️</button>
-          <button id="play-button" title="Přehrát (Mezerník/P)" >🚀</button>
-          <button id="pause-button" title="Pauza (Mezerník/P)" >🖖⏸️</button>
-          <button id="next-button" title="Další (Šipka vpravo)" >▶️➡️</button>
-          <button id="loop-button" title="Opakovat (L)" >🔁</button>
-          <button id="shuffle-button" title="Náhodně (Vypnuto)" >🔀</button>
-          <button id="reset-button" title="Restartovat skladbu (R)" >🔄</button>
-          <button id="fullscreen-toggle" title="Celá obrazovka (F)" >⛶</button>
-          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" >📋</button>
-          <button id="reload-button" title="Obnovit stránku" >🔄</button>
-          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" >📜</button> 
-          <button id="timer-button" title="Časovač vypnutí (T)" >⏰</button>
-          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" >🗑️</button>
+          <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button>
+          <button id="play-button" title="Přehrát (Mezerník/P)" style="background:  #4169E1 ;">🚀</button>
+          <button id="pause-button" title="Pauza (Mezerník/P)" style="background: #B22222;">🖖⏸️</button>
+          <button id="next-button" title="Další (Šipka vpravo)" style="background:#00008B ;">▶️➡️</button>
+          <button id="loop-button" title="Opakovat (L)" style="background: #00FF00;">🔁</button>
+          <button id="shuffle-button" title="Náhodně (Vypnuto)" style="background: #FF8C00;">🔀</button>
+          <button id="reset-button" title="Restartovat skladbu (R)" style="background: #FF3399 ;">🔄</button>
+          <button id="fullscreen-toggle" title="Celá obrazovka (F)" style="background: #D2691E ;">⛶</button>
+          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" style="background: #663300 ;">📋</button>
+          <button id="reload-button" title="Obnovit stránku" style="background: #CC9966;">🔄</button>
+          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" style="background: #CC6633 ;">📜</button> 
+          <button id="timer-button" title="Časovač vypnutí (T)" style="background: #FFD700 ;">⏰</button>
+          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" style="background: #000000;">🗑️</button>
           <button id="perf-monitor-btn">🔍📊</button>
-           <button id="jirik-manual-opener-btn" >🧾</button>  
+           <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
           <button id="mini-mode-float">🖼️ Float</button>
 <button id="mini-mode-pip">📺 PiP</button>
 <button id="mini-mode-popup">🪟 Popup</button>
- <button id="playlist-sync-button" title="Synchronizovat playlist do cloudu (Ctrl+Shift+S)">
-    🔄 Sync Playlist
-</button>
-           <button id="openMissionLog"
-        type="button"
-        onclick="window.open('https://jirka22med.github.io/star-trek-hudebni-prehravac-vylepsen/archivni_zaznam_mise_star_trek_hudebni_prehravac_lcars_readme.html','_blank','noopener');"
-        style="padding:10px 14px;border-radius:12px;background:#0f1830;color:#cfe6ff;border:1px solid #2a3350;">
-  📜 Otevřít archivní záznam mise
-</button>
-
-
+ 
+            
         </div>
        
           
@@ -270,13 +294,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
 
- <script src="prednacitani-pisnicek.js"></script>     
-    
 <!-- Hlavní přehrávač - inicializuje globální proměnné (window.tracks, window.favorites) -->
 <script src="script.js"></script>
 
-    
-    
 <!-- Data playlistu - naplňuje window.tracks -->
 <script src="myPlaylist.js"></script>
 
@@ -325,15 +345,8 @@
 <script src="sprava-rozhrani.js" defer></script>
     
     <!-- Plovoucí okno mini Přehravače -->
-    <script src="miniPlayer.js" defer></script>
- 
-    
-    <script src="playlistSync.js" defer></script>
-    
+    <script src="miniPlayer.js"></script>
+    <script src="loadingScreen.js"></script> 
 </body>
 </html>
-
-
-
-
 
