@@ -96,7 +96,7 @@
                             // Počká a skryje loading screen
                             setTimeout(() => {
                                 hideLoadingScreen();
-                            }, 500);
+                            }, 3000);
                         } else {
                             // Zobrazí aktuální krok bez upper case
                             statusText.textContent = log.text;
@@ -128,3 +128,4 @@
                 getProgress: () => currentProgress
             };
         })();
+
