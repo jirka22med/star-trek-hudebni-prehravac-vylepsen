@@ -1,6 +1,6 @@
 /* ============================================
-   LOADING SCREEN - ECO VARIANTA B
-   Minimální JavaScript, maximální výkon
+   LOADING SCREEN - ECO VARIANTA A (FADE-IN)
+   Jen CSS animace, minimální JavaScript
    ============================================ */
 
 (function() {
@@ -8,7 +8,7 @@
     
     // Konfigurace
     const CONFIG = {
-        LOAD_DURATION: 15000,        // 15 sekund celkové načítání
+        LOAD_DURATION: 20000,        // 20 sekund celkové načítání
         UPDATE_INTERVAL: 50,         // Aktualizace každých 50ms (plynulý progress)
         MIN_DISPLAY_TIME: 2000,      // Minimální zobrazení 2 sekundy
         FADE_OUT_DURATION: 500       // Fade out animace 0.5s
@@ -55,8 +55,6 @@
         const html = `
             <div id="loading-screen">
                 <div class="loading-template">
-                     
-                    
                     <div class="loading-welcome">
                         <h2>VÍTEJTE</h2>
                         <h3>VÍCE ADMIRÁLE JIŘÍKU</h3>
@@ -66,7 +64,7 @@
                         <p><strong>STAR TREK HUDEBNÍ</strong></p>
                         <p><strong>PŘEHRÁVAČ SE</strong></p>
                         <p><strong>PRÁVĚ NAČÍTÁ</strong></p>
-                        <p class="highlight">ZA 15 SEKUND</p>
+                        <p class="highlight">ZA 20 SEKUND</p>
                         <p><strong>BUDE PŘIPRAVEN</strong></p>
                     </div>
                     
