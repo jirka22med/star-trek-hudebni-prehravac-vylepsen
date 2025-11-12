@@ -26,27 +26,7 @@
     pointer-events: none;
 }
 
-/* Šablona kontejner */
-.loading-template {
-    width: 90%;
-    max-width: 600px;
-    padding: 40px;
-    background: rgba(27, 38, 59, 0.95);
-    border: 3px solid #00B7EB;
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(0, 183, 235, 0.3);
-}
 
-/* Nadpis ŠABLONA */
-.loading-header {
-    text-align: center;
-    font-family: 'Orbitron', 'Segoe UI', sans-serif;
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #E0E1DD;
-    margin-bottom: 30px;
-    letter-spacing: 3px;
-}
 
 /* Vítací sekce (červený rámeček) */
 .loading-welcome {
@@ -251,5 +231,6 @@
         height: 22px;
     }
 }
+
 
 
