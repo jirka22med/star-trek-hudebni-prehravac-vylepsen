@@ -17,6 +17,7 @@
     z-index: 99999;
     opacity: 1;
     transition: opacity 0.5s ease-out;
+    margin-top: -20px;
 }
 
 /* Skrytí loading screenu */
@@ -250,3 +251,4 @@
         height: 22px;
     }
 }
+
