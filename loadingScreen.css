@@ -17,6 +17,7 @@
     z-index: 99999;
     opacity: 1;
     transition: opacity 0.5s ease-out;
+   margin-top: -30px;
 }
 
 /* Skrytí loading screenu */
@@ -25,21 +26,7 @@
     pointer-events: none;
 }
 
-/* Šablona kontejner */
-.loading-template {
-    width: 90%;
-    max-width: 650px;
-    padding: 40px;
-    background: rgba(27, 38, 59, 0.95);
-    border: 3px solid #00B7EB;
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(0, 183, 235, 0.3);
-}
 
-/* Nadpis ŠABLONA - ODSTRANĚNO */
-.loading-header {
-    display: none;
-}
 
 /* Vítací sekce (červený rámeček) */
 .loading-welcome {
@@ -293,3 +280,4 @@
         font-size: 1rem;
     }
 }
+
