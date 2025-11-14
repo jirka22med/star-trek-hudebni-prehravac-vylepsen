@@ -53,8 +53,8 @@
      */
     function createLoadingHTML() {
         const html = `
-            <div id="loading-screen" style="margin-top: -15px;">
-                <div class="loading-template">
+            <div id="loading-screen" style="margin-top: -30px;">
+                <div class="loading-template" style="margin-top: -30px>
                     <div class="loading-welcome">
                         <h2>VÍTEJTE</h2>
                         <h3>VÍCE ADMIRÁLE JIŘÍKU</h3>
@@ -195,4 +195,5 @@
     }
     
 })();
+
 
