@@ -369,8 +369,48 @@ const BUTTON_CONFIG = {
     category: 'Systém',
     essential: false,
     description: 'Otevře detailní LCARS dokumentaci projektu s technickými daty, verzemi a logem mise. Záznam vytvořen ve spolupráci s admirálem Chatbotem a flotilovým AI Claudem.'
-}
+},
     
+    'nazev-prehravace': {
+        name: '🎵 Název Prěhravače',
+        category: 'Informace Přehravače',
+        essential: true,
+        description: 'Hlavní nadpis přehrávače (STAR TREK: HUDEBNÍ PŘEHRÁVAČ)'
+    },
+    'progres-bar-time-part': {
+        name: '⏱️ Progress bar + časovač',
+        category: 'Informace Přehravače',
+        essential: true,
+        description: 'Kompletní panel s časovým ukazatelem a progress barem skladby'
+    },
+    
+    'search-container': {
+    name: 'Star Trek vyhledávač',
+        category: 'Informace Přehravače',
+        essential: true,
+        description: 'Kompletní vyhledávání ve Star Trek Hudebním Přehravači'
+        },
+    
+    'volume-sider-nastaveni-hlasitosti': {
+    name: 'Nastavení hlasitosti',
+        category: 'Informace Přehravače',
+        essential: true,
+        description: 'Nastavování Hlasitosti v Star Trek Hudebním Přehravači'
+        },    
+    
+   'trackTitle': {
+   name: 'název skladby',
+        category: 'Informace Přehravače',
+        essential: true,
+        description: 'Vtéto části se zobrazoví názvi písniček ve Star Trek Hudebním Přehravači'
+        },    
+    
+   'digitalni-hodini-datum': {
+    name: 'Digitální hodiny z aktuálním datumem',
+        category: 'Informace Přehravače',
+        essential: true,
+        description: 'Vtéto části se zobrazoví názvi písniček ve Star Trek Hudebním Přehravači'
+        },   
 };
 
 // --- Defaultní viditelnost tlačítek ---
@@ -436,6 +476,13 @@ const DEFAULT_VISIBILITY = {
     'mini-mode-popup': false,
     'playlist-sync-button': false,
     'openMissionLog': false, 
+    'progres-bar-time-part': true,
+    'nazev-prehravace': true,
+    'search-container': true,
+    'volume-sider-nastaveni-hlasitosti': true,
+    'trackTitle': true,
+    'digitalni-hodini-datum': true,
+    
 };
  
 
