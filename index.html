@@ -8,7 +8,8 @@
   <title>Star Trek: Hudební Přehravač</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="miniPlayer.css">  
-  <link rel="stylesheet" href="loadingScreen.css">    
+  <link rel="stylesheet" href="loadingScreen.css">  
+  <link rel="stylesheet" href="casovac.css">   
 </head>
 <body>
     
@@ -29,11 +30,11 @@
 
   <div class="player-container">
        
-      <h1 class="header-title"  >STAR TREK: HUDEBNÍ PŘEHRAVAČ</h1>
+      <h1 class="header-title" id="nazev-prehravace" >STAR TREK: HUDEBNÍ PŘEHRAVAČ</h1>
     <h2 id="trackTitle">Vyberte skladbu</h2>
       
       
-      <div class="time-controls" >
+      <div class="time-controls" id="progres-bar-time-part" >
         <span id="currentTime" style="display:inline-block;padding:2px;background:#000;border:2px solid #C00000;color:#fff;margin:0;">
          <span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span><span class="time-separator" style="color: white;">:</span><span class="time-part" style="color: white;">00</span>
         </span>
@@ -47,30 +48,48 @@
       <div id="control-panel" >
            <!-- hl kontejner tlačítek -->
         <div class="controls">
-          <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
+          <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button> 
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="play-button" title="Přehrát (Mezerník/P)" style="background:  #4169E1 ;">🚀</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="pause-button" title="Pauza (Mezerník/P)" style="background: #B22222;">🖖⏸️</button>
+        <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="next-button" title="Další (Šipka vpravo)" style="background:#00008B ;">▶️➡️</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="loop-button" title="Opakovat (L)" style="background: #00FF00;">🔁</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="shuffle-button" title="Náhodně (Vypnuto)" style="background: #FF8C00;">🔀</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="reset-button" title="Restartovat skladbu (R)" style="background: #FF3399 ;">🔄</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="fullscreen-toggle" title="Celá obrazovka (F)" style="background: #D2691E ;">⛶</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" style="background: #663300 ;">📋</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="reload-button" title="Obnovit stránku" style="background: #CC9966;">🔄</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" style="background: #CC6633 ;">📜</button> 
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="timer-button" title="Časovač vypnutí (T)" style="background: #FFD700 ;">⏰</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" style="background: #000000;">🗑️</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="perf-monitor-btn">🔍📊</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
            <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="mini-mode-float">🖼️ Float</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
 <button id="mini-mode-pip">📺 PiP</button>
+            <!-- Mám nastaveno v buttonVisibilityManager.js-->
 <button id="mini-mode-popup">🪟 Popup</button>
  
             
         </div>
        
           
-        <div class="volume-controls">
+        <div class="volume-controls" id="volume-sider-nastaveni-hlasitosti" >
           <button id="mute-button" title="Ztlumit (M)">🔊</button>
           <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.1" title="Hlasitost (A/D)">
           <span id="volume-value">10</span>
@@ -100,7 +119,7 @@
   
       </div>
     </div> 
-    <div class="hlavni-kontejner-pro-cas-a-casovac" >
+    <div class="hlavni-kontejner-pro-cas-a-casovac" id="digitalni-hodini-datum" >
   <div class="time-calendar-wrapper" >
     <div class="time">
       <div class="time-colon"><div class="time-text"><span class="num hours">00</span><span class="text">H</span></div></div>
@@ -116,17 +135,54 @@
     <div class="timer-display">
       <span id="timer-minutes">15</span>:<span id="timer-seconds">00</span>
     </div>
+    
     <div class="timer-controls">
-      <button id="timer-5">5 min</button>
-      <button id="timer-15">15 min</button>
-      <button id="timer-30">30 min</button>
-      <button id="timer-60">60 min</button>
-      <button id="timer-start">Start</button>
-      <button id="timer-stop">Stop</button>
+      <!-- Start/Stop tlačítka -->
+      <button id="timer-start">▶️ Start</button>
+      <button id="timer-stop">⏹️ Stop</button>
+      
+      <!-- Časovač 1-10 minut -->
+      <button id="timer-1">1️⃣ 1 min</button>
+      <button id="timer-2">2️⃣ 2 min</button>
+      <button id="timer-3">3️⃣ 3 min</button>
+      <button id="timer-4">4️⃣ 4 min</button>
+      <button id="timer-5">5️⃣ 5 min</button>
+      <button id="timer-6">6️⃣ 6 min</button>
+      <button id="timer-7">7️⃣ 7 min</button>
+      <button id="timer-8">8️⃣ 8 min</button>
+      <button id="timer-9">9️⃣ 9 min</button>
+      <button id="timer-10">🔟 10 min</button>
+      
+      <!-- Časovač 11-20 minut -->
+      <button id="timer-11">1️⃣1️⃣ 11 min</button>
+      <button id="timer-12">1️⃣2️⃣ 12 min</button>
+      <button id="timer-13">1️⃣3️⃣ 13 min</button>
+      <button id="timer-14">1️⃣4️⃣ 14 min</button>
+      <button id="timer-15">1️⃣5️⃣ 15 min</button>
+      <button id="timer-16">1️⃣6️⃣ 16 min</button>
+      <button id="timer-17">1️⃣7️⃣ 17 min</button>
+      <button id="timer-18">1️⃣8️⃣ 18 min</button>
+      <button id="timer-19">1️⃣9️⃣ 19 min</button>
+      <button id="timer-20">2️⃣0️⃣ 20 min</button>
+      
+      <!-- Časovač 21-30 minut -->
+      <button id="timer-21">2️⃣1️⃣ 21 min</button>
+      <button id="timer-22">2️⃣2️⃣ 22 min</button>
+      <button id="timer-23">2️⃣3️⃣ 23 min</button>
+      <button id="timer-24">2️⃣4️⃣ 24 min</button>
+      <button id="timer-25">2️⃣5️⃣ 25 min</button>
+      <button id="timer-26">2️⃣6️⃣ 26 min</button>
+      <button id="timer-27">2️⃣7️⃣ 27 min</button>
+      <button id="timer-28">2️⃣8️⃣ 28 min</button>
+      <button id="timer-29">2️⃣9️⃣ 29 min</button>
+      <button id="timer-30">3️⃣0️⃣ 30 min</button>
+      
+      <!-- Bonusové časovače (pokud chceš) -->
+      <button id="timer-60">6️⃣0️⃣ 60 min</button>
     </div>
-  </div>
 </div>
-   
+</div>
+        <!-- Mám nastaveno v buttonVisibilityManager.js >> pouze jen id popisky to mi skrývá celý tento blok až po <canvas id="waveform-canvas"></canvas> -->
        <div class="keyboard-container">
         <div id="popisky"> 
          <div class="tone-meter-container" style="display:inline-block;padding:2px;background:#000;border:2px solid #C00000;color:#fff;margin:0;">
@@ -313,7 +369,7 @@
     
     <!-- Plovoucí okno mini Přehravače -->
     <script src="miniPlayer.js" defer></script>
-    <script src="loadingScreen.js" defer></script> 
+   <!-- <script src="loadingScreen.js" defer></script> -->
 </body>
 </html>
 
