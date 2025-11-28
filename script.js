@@ -69,6 +69,7 @@ const DOM = {
             'timer-28': 28,
             'timer-29': 29,
             'timer-30': 30,
+            'timer-60': 60,
         }
     },
     favoritesButton: document.createElement('button'),
