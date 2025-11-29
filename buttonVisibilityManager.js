@@ -411,6 +411,14 @@ const BUTTON_CONFIG = {
         essential: true,
         description: 'Vtéto části se zobrazoví názvi písniček ve Star Trek Hudebním Přehravači'
         },   
+    
+    
+    'manualni-hlasove-ovladani': {
+        name: 'Manuální hlasové ovládání',
+        category: 'Monitor výkonu',
+        essential: false,
+        description: 'Hlasové ovládání Star Trek Hudebního Přehravače'
+    },
 };
 
 // --- Defaultní viditelnost tlačítek ---
@@ -483,6 +491,7 @@ const DEFAULT_VISIBILITY = {
     'trackTitle': true,
     'digitalni-hodini-datum': true,
     
+    'manualni-hlasove-ovladani': false,
 };
  
 
