@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="miniPlayer.css">  
   <link rel="stylesheet" href="loadingScreen.css">  
-  <link rel="stylesheet" href="casovac.css">   
+  <link rel="stylesheet" href="casovac.css"> 
+  <link rel="stylesheet" href="tone-meter-star-trek-hudebni-prehravac.css">   
 </head>
 <body>
     
@@ -49,35 +50,35 @@
            <!-- hl kontejner tlačítek -->
         <div class="controls">
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="prev-button" title="Předchozí (Šipka vlevo)" style="background: #00008B ;">◀️⬅️</button> 
+          <button id="prev-button" title="Předchozí (Šipka vlevo)"  >◀️⬅️</button> 
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="play-button" title="Přehrát (Mezerník/P)" style="background:  #4169E1 ;">🚀</button>
+          <button id="play-button" title="Přehrát (Mezerník/P)"   >🚀</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="pause-button" title="Pauza (Mezerník/P)" style="background: #B22222;">🖖⏸️</button>
+          <button id="pause-button" title="Pauza (Mezerník/P)"  >🖖⏸️</button>
         <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="next-button" title="Další (Šipka vpravo)" style="background:#00008B ;">▶️➡️</button>
+          <button id="next-button" title="Další (Šipka vpravo)"  >▶️➡️</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="loop-button" title="Opakovat (L)" style="background: #00FF00;">🔁</button>
+          <button id="loop-button" title="Opakovat (L)"  >🔁</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="shuffle-button" title="Náhodně (Vypnuto)" style="background: #FF8C00;">🔀</button>
+          <button id="shuffle-button" title="Náhodně (Vypnuto)"  >🔀</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="reset-button" title="Restartovat skladbu (R)" style="background: #FF3399 ;">🔄</button>
+          <button id="reset-button" title="Restartovat skladbu (R)"  >🔄</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="fullscreen-toggle" title="Celá obrazovka (F)" style="background: #D2691E ;">⛶</button>
+          <button id="fullscreen-toggle" title="Celá obrazovka (F)"  >⛶</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky" style="background: #663300 ;">📋</button>
+          <button id="toggle-info-button" title="Zobrazit/Skrýt klávesové zkratky"   >📋</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="reload-button" title="Obnovit stránku" style="background: #CC9966;">🔄</button>
+          <button id="reload-button" title="Obnovit stránku"  >🔄</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist" style="background: #CC6633 ;">📜</button> 
+          <button id="toggle-playlist-button" title="Zobrazit/Skrýt playlist"  >📜</button> 
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="timer-button" title="Časovač vypnutí (T)" style="background: #FFD700 ;">⏰</button>
+          <button id="timer-button" title="Časovač vypnutí (T)"  >⏰</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()" style="background: #000000;">🗑️</button>
+          <button id="clearAllDataBtn" onclick="window.clearAllAudioPlayerData()"  >🗑️</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="perf-monitor-btn">🔍📊</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
-           <button id="jirik-manual-opener-btn" style="background: #FF6600;">🧾</button>  
+           <button id="jirik-manual-opener-btn"  >🧾</button>  
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
           <button id="mini-mode-float">🖼️ Float</button>
             <!-- Mám nastaveno v buttonVisibilityManager.js-->
@@ -86,6 +87,9 @@
 <button id="mini-mode-popup">🪟 Popup</button>
  
             
+    <!-- budu nastavovat v buttonVisibilityManager.js-->        
+  <!-- Jednoduché PTT tlačítko -->
+<button class="voice-ptt-trigger" id="manualni-hlasove-ovladani">V</button>          
         </div>
        
           
@@ -201,7 +205,7 @@
             
             <div class="tone-meter-a4-control">
                 <span style="color: #ccc;">A4 =</span>
-                <input type="number" min="400" max="480" value="440" class="tone-meter-a4-input" id="a4FreqInput">
+                <input type="number" min="400" max="580" value="440" class="tone-meter-a4-input" id="a4FreqInput">
                 <span style="color: #ccc;">Hz</span>
                 <button class="tone-meter-a4-reset" id="resetA4Btn">Reset</button>
             </div>
