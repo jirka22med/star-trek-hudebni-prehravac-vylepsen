@@ -24,12 +24,12 @@ class ToneMeter {
         this.dominantFrequency = 0;
         this.animationId = null;
         this.inputVolume = 1.0;
-        this.micBoost = 1.0;
+        this.micBoost = 0.5;
         this.microphoneStream = null;
         this.microphonePermissionGranted = false;
         
         // NOVÉ: Kalibrace A4
-        this.a4Frequency = 440; // Standardní A4
+        this.a4Frequency = 580; // Standardní A4
         
         // NOVÉ: Auto-kalibrace mikrofonu
         this.isCalibrating = false;
@@ -79,7 +79,7 @@ class ToneMeter {
 
     // NOVÉ: Nastavení A4 frekvence
     setA4Frequency(frequency) {
-        this.a4Frequency = Math.max(400, Math.min(480, frequency));
+        this.a4Frequency = Math.max(400, Math.min(580, frequency));
         console.log('ToneMeter: A4 frekvence nastavena na', this.a4Frequency, 'Hz');
     }
 
@@ -244,11 +244,11 @@ class ToneMeter {
             this.startAnalysis();
             
             // NOVÉ: Automatická kalibrace po 2 sekundách
-            setTimeout(() => {
+           /* setTimeout(() => {
                 if (this.isActive) {
                     this.startCalibration();
                 }
-            }, 2000);
+            }, 2000); */
             
             console.log('ToneMeter: Analýza zvuku spuštěna.');
         } catch (error) {
@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // NOVÉ: A4 kalibrace
     DOM.a4FreqInput.addEventListener('input', function() {
         const freq = parseFloat(this.value);
-        if (toneMeter && freq >= 400 && freq <= 480) {
+        if (toneMeter && freq >= 400 && freq <= 580) {
             toneMeter.setA4Frequency(freq);
             console.log('A4 frekvence změněna na:', freq, 'Hz');
         }
