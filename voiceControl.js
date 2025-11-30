@@ -4,7 +4,7 @@
  * "Press V to command!" - Smart PTT system
  */
 
-const DEBUG_VOICE = true;
+const DEBUG_VOICE = false;
 
 class VoiceController {
     constructor() {
@@ -23,10 +23,15 @@ class VoiceController {
         this.voiceResponses = true;
         this.responseVoice = null;
         
+        // 🆕 Audio device management
+        this.audioDevices = [];
+        this.selectedMicrophoneId = null;
+        this.mediaStream = null;
+        
         // UI elements
         this.toggleBtn = null;
         this.statusIndicator = null;
-        this.pttObserver = null; // 🆕 MutationObserver pro PTT tlačítka
+        this.pttObserver = null;
         
         // Commands
         this.commands = new Map();
@@ -42,6 +47,9 @@ class VoiceController {
             return;
         }
         
+        // 🆕 Detekce dostupných audio zařízení
+        await this.detectAudioDevices();
+        
         this.setupCommands();
         this.setupRecognition();
         this.createUI();
@@ -54,6 +62,63 @@ class VoiceController {
 
     checkBrowserSupport() {
         return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    }
+
+    // 🆕 Detekce audio zařízení (mikrofony)
+    async detectAudioDevices() {
+        try {
+            // Požádat o permissions
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                } 
+            });
+            
+            // Získat seznam zařízení
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.audioDevices = devices.filter(device => device.kind === 'audioinput');
+            
+            // Zavřít test stream
+            stream.getTracks().forEach(track => track.stop());
+            
+            if (DEBUG_VOICE) {
+                console.log("🎤 Detekovaná audio zařízení:");
+                this.audioDevices.forEach((device, index) => {
+                    console.log(`  ${index + 1}. ${device.label || 'Neznámý mikrofon'} (${device.deviceId.substring(0, 20)}...)`);
+                });
+            }
+            
+            // Hledat JBL Quantum nebo externí USB zařízení
+            const externalMic = this.audioDevices.find(device => {
+                const label = device.label.toLowerCase();
+                return label.includes('jbl') || 
+                       label.includes('quantum') || 
+                       label.includes('usb') || 
+                       label.includes('wireless') ||
+                       label.includes('headset') ||
+                       label.includes('dongle');
+            });
+            
+            if (externalMic) {
+                this.selectedMicrophoneId = externalMic.deviceId;
+                if (DEBUG_VOICE) {
+                    console.log(`🎧 Preferovaný mikrofon: ${externalMic.label}`);
+                }
+                this.showNotification(`🎧 Detekován: ${externalMic.label}`, 'success', 4000);
+            } else {
+                // Použít default
+                this.selectedMicrophoneId = this.audioDevices[0]?.deviceId || null;
+                if (DEBUG_VOICE) {
+                    console.log(`🎤 Použit výchozí mikrofon`);
+                }
+            }
+            
+        } catch (error) {
+            console.warn("🎤 Nelze získat audio zařízení:", error);
+            this.audioDevices = [];
+        }
     }
 
     setupCommands() {
@@ -80,9 +145,9 @@ class VoiceController {
             { patterns: ['impulse', 'normální rychlost'], action: 'normalSpeed', description: 'Normální rychlost' },
             { patterns: ['beam me up', 'random'], action: 'randomTrack', description: 'Náhodná skladba' },
             
-            // Info
-            { patterns: ['co hraje', 'what\'s playing'], action: 'getCurrentTrack', description: 'Oznámí aktuální skladbu' },
-            { patterns: ['status', 'report'], action: 'getStatus', description: 'Hlášení o stavu přehrávače' }
+            // Příkazy pro diagnostiku
+            { patterns: ['test mikrofonu', 'microphone test', 'test mic'], action: 'testMicrophone', description: 'Test mikrofonu' },
+            { patterns: ['seznam mikrofonů', 'list microphones', 'which microphone'], action: 'listMicrophones', description: 'Seznam dostupných mikrofonů' }
         ];
 
         commands.forEach(cmd => {
@@ -118,6 +183,7 @@ class VoiceController {
             this.isPTTActive = false;
             this.updateStatusIndicator('inactive');
             this.restoreAudioVolume();
+            this.releaseMediaStream(); // 🆕 Uvolnit stream po skončení
             if (DEBUG_VOICE) console.log("🎤 Naslouchání ukončeno");
         };
         
@@ -285,6 +351,15 @@ class VoiceController {
             case 'getStatus':
                 this.generateStatusReport();
                 break;
+                
+            // 🆕 Diagnostické příkazy - BEZ AWAIT
+            case 'testMicrophone':
+                this.testMicrophone();  // ✅ OPRAVENO - bez await
+                break;
+                
+            case 'listMicrophones':
+                this.listAvailableMicrophones();
+                break;
         }
         
         this.showCommandFeedback(command.action, transcript);
@@ -348,10 +423,20 @@ class VoiceController {
     }
 
     // ⚡ PTT CORE FUNCTIONALITY
-    activateListening() {
+    async activateListening() {
         if (this.isListening || !this.isEnabled) return;
         
         this.isPTTActive = true;
+        
+        // 🆕 Získat MediaStream s preferovaným mikrofonem
+        try {
+            await this.acquireMediaStream();
+        } catch (error) {
+            console.error("🎤 Chyba při získávání audio streamu:", error);
+            this.showNotification("Nelze získat přístup k mikrofonu", 'error');
+            this.restoreAudioVolume();
+            return;
+        }
         
         // Krok A: Uložit a ztlumit audio
         this.saveAndDuckAudio();
@@ -363,6 +448,57 @@ class VoiceController {
         } catch (error) {
             console.error("🎤 Chyba při spuštění:", error);
             this.restoreAudioVolume();
+            this.releaseMediaStream();
+        }
+    }
+
+    // 🆕 Získání MediaStream s vybraným mikrofonem
+    async acquireMediaStream() {
+        // Zavřít předchozí stream pokud existuje
+        this.releaseMediaStream();
+        
+        const constraints = {
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 48000, // Vyšší kvalita pro JBL Quantum
+            }
+        };
+        
+        // Přidat deviceId pokud je vybrán specifický mikrofon
+        if (this.selectedMicrophoneId) {
+            constraints.audio.deviceId = { exact: this.selectedMicrophoneId };
+        }
+        
+        try {
+            this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            if (DEBUG_VOICE) {
+                const track = this.mediaStream.getAudioTracks()[0];
+                console.log("🎤 Audio stream získán:");
+                console.log(`  Label: ${track.label}`);
+                console.log(`  Settings:`, track.getSettings());
+            }
+            
+        } catch (error) {
+            // Fallback na default mikrofon
+            if (error.name === 'OverconstrainedError' && this.selectedMicrophoneId) {
+                console.warn("🎤 Vybraný mikrofon nedostupný, použit výchozí");
+                this.selectedMicrophoneId = null;
+                constraints.audio.deviceId = undefined;
+                this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    // 🆕 Uvolnění MediaStream
+    releaseMediaStream() {
+        if (this.mediaStream) {
+            this.mediaStream.getTracks().forEach(track => track.stop());
+            this.mediaStream = null;
         }
     }
 
@@ -600,17 +736,40 @@ class VoiceController {
 
     async enable() {
         try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
+            // 🆕 Re-detekce zařízení při každé aktivaci
+            await this.detectAudioDevices();
+            
+            // Požádat o přístup s preferovaným mikrofonem
+            const constraints = {
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            };
+            
+            if (this.selectedMicrophoneId) {
+                constraints.audio.deviceId = { exact: this.selectedMicrophoneId };
+            }
+            
+            const testStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Zobrazit jaký mikrofon byl použit
+            const track = testStream.getAudioTracks()[0];
+            const micLabel = track.label || 'Neznámý mikrofon';
+            
+            // Zavřít test stream
+            testStream.getTracks().forEach(t => t.stop());
             
             this.isEnabled = true;
             this.toggleBtn.classList.add('active');
-            this.toggleBtn.title = 'Hlasové ovládání AKTIVNÍ (Stiskni V pro příkaz)';
+            this.toggleBtn.title = `Hlasové ovládání AKTIVNÍ\n🎧 ${micLabel}\n(Stiskni V pro příkaz)`;
             
             this.saveSettings();
-            this.showNotification("🎤 Hlasové ovládání aktivováno - Stiskni V pro příkaz", 'success');
+            this.showNotification(`🎤 Aktivováno: ${micLabel}`, 'success', 4000);
             this.speak("Hlasové ovládání aktivováno. Stiskněte V pro příkaz.");
             
-            if (DEBUG_VOICE) console.log("🎤 Systém aktivován");
+            if (DEBUG_VOICE) console.log("🎤 Systém aktivován s mikrofonem:", micLabel);
             
         } catch (error) {
             console.error("🎤 Chyba při aktivaci:", error);
@@ -624,6 +783,9 @@ class VoiceController {
         if (this.isListening) {
             this.recognition.stop();
         }
+        
+        // 🆕 Uvolnit všechny streamy
+        this.releaseMediaStream();
         
         this.toggleBtn.classList.remove('active');
         this.toggleBtn.title = 'Hlasové ovládání (Stiskni V)';
@@ -641,6 +803,63 @@ class VoiceController {
         } else {
             console.log(`[${type.toUpperCase()}] ${message}`);
         }
+    }
+
+    // 🆕 Test mikrofonu
+    async testMicrophone() {
+        this.speak("Spouštím test mikrofonu");
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: this.selectedMicrophoneId ? { exact: this.selectedMicrophoneId } : undefined,
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
+            });
+            
+            const track = stream.getAudioTracks()[0];
+            const settings = track.getSettings();
+            
+            const message = `
+                🎧 Aktivní mikrofon: ${track.label}
+                📊 Sample rate: ${settings.sampleRate}Hz
+                🔊 Kanály: ${settings.channelCount}
+                ✅ Echo cancellation: ${settings.echoCancellation ? 'Ano' : 'Ne'}
+                ✅ Noise suppression: ${settings.noiseSuppression ? 'Ano' : 'Ne'}
+            `.trim().replace(/\s+/g, ' ');
+            
+            this.showNotification(message, 'info', 8000);
+            this.speak(`Mikrofon funguje. Používám ${track.label}`);
+            
+            stream.getTracks().forEach(t => t.stop());
+            
+        } catch (error) {
+            this.showNotification(`❌ Test mikrofonu selhal: ${error.message}`, 'error');
+            this.speak("Test mikrofonu selhal");
+        }
+    }
+
+    // 🆕 Seznam dostupných mikrofonů
+    listAvailableMicrophones() {
+        if (this.audioDevices.length === 0) {
+            this.speak("Žádné mikrofony nebyly detekovány");
+            this.showNotification("⚠️ Žádné audio zařízení", 'warn');
+            return;
+        }
+        
+        let message = `🎤 Dostupné mikrofony (${this.audioDevices.length}):\n`;
+        
+        this.audioDevices.forEach((device, index) => {
+            const isCurrent = device.deviceId === this.selectedMicrophoneId;
+            const prefix = isCurrent ? '✅' : '  ';
+            message += `${prefix} ${index + 1}. ${device.label || 'Neznámý mikrofon'}\n`;
+        });
+        
+        this.showNotification(message, 'info', 10000);
+        
+        const currentMic = this.audioDevices.find(d => d.deviceId === this.selectedMicrophoneId);
+        this.speak(`Detekováno ${this.audioDevices.length} mikrofonů. Aktuálně používám ${currentMic?.label || 'výchozí mikrofon'}`);
     }
 
     // Persistence
