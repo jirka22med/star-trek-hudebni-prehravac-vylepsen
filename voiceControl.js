@@ -215,7 +215,7 @@ class VoiceController {
             if (confidence >= this.confidence || (confidence === 0 && transcript.length > 0)) {
                 this.processCommand(transcript);
             } else {
-                this.speak("Nerozuměl jsem, zkuste to znovu");
+                this.speak("Polib mi můj naleštěnej zadek!");
             }
         };
 
@@ -917,6 +917,7 @@ if (document.readyState === 'loading') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
+
 
 
 
