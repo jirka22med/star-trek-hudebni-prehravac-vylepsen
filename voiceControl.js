@@ -210,7 +210,9 @@ class VoiceController {
                 console.log("🎤 Rozpoznáno:", transcript, "Confidence:", confidence);
             }
             
-            if (confidence >= this.confidence) {
+            // 🛠️ OPRAVA PRO EDGE: Někdy vrací confidence 0, i když rozumí perfektně.
+            // Pokud transcript není prázdný, bereme to jako platný příkaz.
+            if (confidence >= this.confidence || (confidence === 0 && transcript.length > 0)) {
                 this.processCommand(transcript);
             } else {
                 this.speak("Nerozuměl jsem, zkuste to znovu");
@@ -915,5 +917,6 @@ if (document.readyState === 'loading') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
+
 
 
