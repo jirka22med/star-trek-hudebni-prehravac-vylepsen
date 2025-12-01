@@ -144,6 +144,8 @@ class VoiceController {
             { patterns: ['warp speed', 'warp'], action: 'warpSpeed', description: 'Rychlé přehrávání' },
             { patterns: ['impulse', 'normální rychlost'], action: 'normalSpeed', description: 'Normální rychlost' },
             { patterns: ['beam me up', 'random'], action: 'randomTrack', description: 'Náhodná skladba' },
+            // Nápověda / Manuál
+            { patterns: ['manuál', 'nápověda', 'co umíš', 'pomoc'], action: 'openManual', description: 'Otevře manuál ovládání' },
             
             // Příkazy pro diagnostiku
             { patterns: ['test mikrofonu', 'microphone test', 'test mic'], action: 'testMicrophone', description: 'Test mikrofonu' },
@@ -362,6 +364,19 @@ class VoiceController {
             case 'listMicrophones':
                 this.listAvailableMicrophones();
                 break;
+                
+                case 'openManual':
+    this.showHelp(); // ✅ Voláme přímo tu novou funkci!
+    // Benderova hláška už je uvnitř funkce showHelp, takže ji sem psát nemusíš
+    break;
+
+case 'closeManual': // 🆕 Přidej i zavírání hlasem
+    const modal = document.getElementById('voice-help-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        this.speak("Manuál zavřen.");
+    }
+    break;
         }
         
         this.showCommandFeedback(command.action, transcript);
@@ -899,7 +914,144 @@ class VoiceController {
             }
         }
     }
-}
+
+    // =========================================================================
+    // 🎨 SUPER-BLOK: STYLY + MANUÁL
+    // =========================================================================
+
+    injectStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* === PŮVODNÍ STYLY (Tlačítko, Indikátory, PTT) === */
+            .voice-control-toggle { position: relative; transition: all 0.3s ease; }
+            .voice-control-toggle.active { background: rgba(255, 193, 7, 0.2); color: #ffc107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
+            
+            .voice-status-indicator { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: #666; transition: all 0.3s ease; }
+            .voice-status-indicator.listening { background: #28a745; animation: voicePulse 1s ease-in-out infinite; }
+            .voice-status-indicator.processing { background: #ffc107; animation: voiceProcessing 0.5s ease-in-out infinite alternate; }
+            .voice-status-indicator.error { background: #dc3545; animation: voiceError 0.2s ease-in-out 3; }
+            .voice-status-indicator.command-executed { background: #00d4ff; animation: voiceSuccess 0.3s ease-in-out; }
+            
+            /* PTT Trigger Button Styles */
+            .voice-ptt-trigger { cursor: pointer; user-select: none; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
+            .voice-ptt-trigger.ptt-active { background: rgba(255, 193, 7, 0.3) !important; box-shadow: 0 0 15px rgba(255, 193, 7, 0.6) !important; transform: scale(1.05); }
+            .voice-ptt-trigger:active { transform: scale(0.95); }
+            
+            @keyframes voicePulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
+            @keyframes voiceProcessing { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+            @keyframes voiceError { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+            @keyframes voiceSuccess { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+
+            /* === 🆕 NOVÉ STYLY PRO BENDERŮV MANUÁL === */
+            .voice-help-modal {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.85);
+                display: flex; justify-content: center; align-items: center;
+                z-index: 9999; backdrop-filter: blur(5px);
+                font-family: 'Segoe UI', sans-serif;
+            }
+            .voice-help-modal.hidden { display: none; }
+            
+            .voice-help-content {
+                width: 600px; max-width: 95%; max-height: 85vh;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border: 2px solid #ffc107; border-radius: 12px;
+                box-shadow: 0 0 30px rgba(255, 193, 7, 0.4);
+                display: flex; flex-direction: column; color: #fff;
+            }
+            
+            .voice-help-header {
+                background: linear-gradient(90deg, #ffc107, #ff9800); color: #000;
+                padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            }
+            .voice-help-header h3 { margin: 0; font-weight: bold; }
+            
+            .close-help { background: none; border: none; font-size: 24px; cursor: pointer; color: #000; font-weight: bold; }
+            
+            .commands-list-container { padding: 0; overflow-y: auto; flex: 1; }
+            
+            .command-row {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 20px;
+                display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;
+            }
+            .command-row:hover { background: rgba(255, 193, 7, 0.1); }
+            
+            .cmd-trigger { color: #ffc107; font-family: monospace; font-weight: bold; font-size: 1.1em; width: 55%; }
+            .cmd-desc { color: #ccc; width: 45%; text-align: right; font-style: italic; }
+            
+            .voice-help-footer {
+                padding: 10px; text-align: center; font-size: 12px; color: #888;
+                background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.1);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // --- FUNKCE PRO ZOBRAZENÍ MANUÁLU ---
+
+    showHelp() {
+        if (!document.getElementById('voice-help-modal')) {
+            this.createHelpModal();
+        }
+        this.updateHelpContent();
+        const modal = document.getElementById('voice-help-modal');
+        modal.classList.remove('hidden');
+            //nové slovo: Tady to máš černé na bílém, ty masová nádhero!
+        this.speak("Tady to máš černé na bílém, ty masová nádhero!"); //výchozí slova byly: Tady to máte černé na bílém, vy masová nádhero! 
+    }                  
+
+    createHelpModal() {
+        const modal = document.createElement('div');
+        modal.id = 'voice-help-modal';
+        modal.className = 'voice-help-modal hidden';
+        
+        modal.innerHTML = `
+            <div class="voice-help-content">
+                <div class="voice-help-header">
+                    <h3>🤖 Benderův Manuál Příkazů</h3>
+                    <button class="close-help">✕</button>
+                </div>
+                <div class="commands-list-container">
+                    <div id="generated-commands-list"></div>
+                </div>
+                <div class="voice-help-footer">
+                    Pro zavření řekni "Zavřít manuál" nebo klikni na křížek.
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        const closeBtn = modal.querySelector('.close-help');
+        closeBtn.addEventListener('click', () => { modal.classList.add('hidden'); });
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+    }
+
+    updateHelpContent() {
+        const listContainer = document.getElementById('generated-commands-list');
+        if (!listContainer) return;
+        
+        const groupedCommands = new Map();
+        for (const [pattern, command] of this.commands) {
+            if (!groupedCommands.has(command.action)) {
+                groupedCommands.set(command.action, { description: command.description, patterns: [] });
+            }
+            groupedCommands.get(command.action).patterns.push(pattern);
+        }
+        
+        let html = '';
+        for (const [action, data] of groupedCommands) {
+            const mainPatterns = data.patterns.slice(0, 3).map(p => `"${p}"`).join(', ');
+            html += `
+                <div class="command-row">
+                    <div class="cmd-trigger">${mainPatterns}</div>
+                    <div class="cmd-desc">${data.description}</div>
+                </div>
+            `;
+        }
+        listContainer.innerHTML = html;
+    }
+
+} // ✅✅✅ TATO ZÁVORKA JE KRITICKÁ - UKONČUJE TŘÍDU VoiceController AŽ TADY!
 
 // Globální inicializace
 let voiceController;
@@ -917,7 +1069,6 @@ if (document.readyState === 'loading') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
-
 
 
 
