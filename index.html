@@ -89,7 +89,9 @@
             
     <!-- budu nastavovat v buttonVisibilityManager.js-->        
   <!-- Jednoduché PTT tlačítko -->
-<button class="voice-ptt-trigger" id="manualni-hlasove-ovladani">V</button>          
+<button class="voice-ptt-trigger" id="voice-commands-help">V</button> 
+<button class="control-button" onclick="window.voiceController.showHelp()" title="Zobrazit hlasové příkazy (Manuál)" id="zobrazeni-manualu">📋</button>          
+            
         </div>
        
           
@@ -339,7 +341,7 @@
 <script src="universalni-perfomens-monitor.js" defer></script>
 
 <!-- Debug wrapper -->
-<!-- <script src="jirkuv-hlidac.js" defer></script> -->
+<script src="jirkuv-hlidac.js" defer></script>
 
 <!-- Audio vizualizace / Tone Meter -->
 <script src="audiou-vizuace.js" defer></script>
@@ -376,5 +378,4 @@
    <!-- <script src="loadingScreen.js" defer></script> -->
 </body>
 </html>
-
 
