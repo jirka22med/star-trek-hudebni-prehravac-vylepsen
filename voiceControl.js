@@ -4,7 +4,7 @@
  * "Press V to command!" - Smart PTT system
  */
 
-const DEBUG_VOICE = false;
+const DEBUG_VOICE = true;
 
 class VoiceController {
     constructor() {
@@ -352,9 +352,9 @@ class VoiceController {
                 this.generateStatusReport();
                 break;
                 
-            // 🆕 Diagnostické příkazy - BEZ AWAIT
+            // 🆕 Diagnostické příkazy
             case 'testMicrophone':
-                this.testMicrophone();  // ✅ OPRAVENO - bez await
+                /*await*/ this.testMicrophone();
                 break;
                 
             case 'listMicrophones':
@@ -915,3 +915,5 @@ if (document.readyState === 'loading') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
+
+
