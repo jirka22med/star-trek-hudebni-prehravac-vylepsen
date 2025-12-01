@@ -260,7 +260,7 @@ class VoiceController {
             this.updateStatusIndicator('processing');
             this.executeCommand(matchedCommand, transcript);
         } else {
-            this.speak("Nerozumím tomuto příkazu");
+            this.speak("Polib mi můj naleštěnej zadek!");
         }
     }
 
@@ -917,6 +917,7 @@ if (document.readyState === 'loading') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
+
 
 
 
