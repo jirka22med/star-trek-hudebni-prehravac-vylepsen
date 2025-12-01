@@ -324,15 +324,21 @@ const BUTTON_CONFIG = {
     },
     'voice-control-toggle': {
         name: '🎤 voice-control-toggle',
-        category: 'Monitor výkonu',
+        category: 'Hlasové ovládání',
         essential: false,
         description: 'Hlasové ovládání'
     },
-    'voice-commands-help': {
+    'zobrazeni-manualu': {
         name: '📋 voice-commands-help',
-        category: 'Monitor výkonu',
+        category: 'Hlasové ovládání',
         essential: false,
         description: 'Hlasové ovládání manual'
+    },
+    'voice-commands-help': {
+        name: 'Manuální hlasové ovládání',
+        category: 'Hlasové ovládání',
+        essential: false,
+        description: 'Hlasové ovládání Star Trek Hudebního Přehravače'
     },
     'clearAllDataBtn': {
         name: '🗑️ Smazat vše z cloudu',
@@ -409,16 +415,11 @@ const BUTTON_CONFIG = {
     name: 'Digitální hodiny z aktuálním datumem',
         category: 'Informace Přehravače',
         essential: true,
-        description: 'Vtéto části se zobrazoví názvi písniček ve Star Trek Hudebním Přehravači'
+        description: 'Zobrazuje aktuální digitální čas a datum'
         },   
     
     
-    'manualni-hlasove-ovladani': {
-        name: 'Manuální hlasové ovládání',
-        category: 'Monitor výkonu',
-        essential: false,
-        description: 'Hlasové ovládání Star Trek Hudebního Přehravače'
-    },
+     
 };
 
 // --- Defaultní viditelnost tlačítek ---
@@ -492,6 +493,8 @@ const DEFAULT_VISIBILITY = {
     'digitalni-hodini-datum': true,
     
     'manualni-hlasove-ovladani': false,
+    
+    'zobrazeni-manualu': false,
 };
  
 
