@@ -97,8 +97,8 @@ function debounceSaveAudioData() {
 
 // --- Inicializace window.tracks ---
 if (!Array.isArray(window.tracks)) {
-    if (DEBUG_MODE) console.warn("audioPlayer.js: window.tracks není pole. Inicializuji jako prázdné.");
-    window.tracks = [];
+    // if (DEBUG_MODE) console.warn("audioPlayer.js: window.tracks není pole. Inicializuji jako prázdné."); 
+    window.tracks = []; // ✅ Funkčnost zůstane zachována, jen zmizí ten žlutý text.
 }
 
 // --- showNotification ---
@@ -1172,3 +1172,4 @@ function monitorPerformance() {
 }
 
 monitorPerformance();
+
