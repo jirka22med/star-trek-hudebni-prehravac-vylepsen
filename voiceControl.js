@@ -996,8 +996,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         this.updateHelpContent();
         const modal = document.getElementById('voice-help-modal');
         modal.classList.remove('hidden');
-            //nové slovo: Tady to máš černé na bílém, ty masová nádhero!
-        this.speak("Tady to máš černé na bílém, ty masová nádhero!"); //výchozí slova byly: Tady to máte černé na bílém, vy masová nádhero! 
+        this.speak("Tady to máš černé na bílém, ty masová nádhero!");
     }                  
 
     createHelpModal() {
@@ -1053,19 +1052,82 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
 
 } // ✅✅✅ TATO ZÁVORKA JE KRITICKÁ - UKONČUJE TŘÍDU VoiceController AŽ TADY!
 
-// Globální inicializace
-let voiceController;
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        voiceController = new VoiceController();
-        window.voiceController = voiceController;
-    });
-} else {
-    voiceController = new VoiceController();
-    window.voiceController = voiceController;
+
+
+// ... (Zde končí třída VoiceController - za poslední závorkou }) ...
+
+// =========================================================================
+// 📱 MOBILNÍ WRAPPER (Podle instrukcí Admirála Clauda)
+// =========================================================================
+
+// 1. Detekce mobilního zařízení
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// 2. Speciální funkce pro Android/iOS
+function setupMobileVoiceControl() {
+    if (typeof DEBUG_VOICE !== 'undefined' && DEBUG_VOICE) console.log("📱 Mobilní režim: Aktivuji Android protokoly");
+
+    // Čekáme na vykreslení tlačítek
+    setTimeout(() => {
+        // Najdeme všechna PTT tlačítka (hlavní i to v menu)
+        const triggerButtons = document.querySelectorAll('.voice-control-toggle, .voice-ptt-trigger, #voice-control-toggle');
+        
+        triggerButtons.forEach(btn => {
+            // Android vyžaduje 'touchstart' pro okamžité povolení mikrofonu
+            // 'click' je na mobilu příliš pomalý a systém ho může blokovat
+            btn.addEventListener('touchstart', async (e) => {
+                // Pokud už běží, nic nedělat (nechat proběhnout vypnutí)
+                if (window.voiceController && window.voiceController.isListening) return;
+
+                // Na mobilu nezamezujeme default chování (aby šlo scrollovat), 
+                // ale odchytíme to pro start mikrofonu
+                if (typeof DEBUG_VOICE !== 'undefined' && DEBUG_VOICE) console.log("📱 Touch start detekován - Vynucuji start mikrofonu");
+
+                if (window.voiceController) {
+                    try {
+                        // ⚡ PŘÍMÝ START (Bypass veškeré logiky)
+                        // Na mobilu neřešíme JBL, neřešíme Ducking, prostě to zapneme.
+                        window.voiceController.recognition.start();
+                        window.voiceController.isListening = true;
+                        window.voiceController.updateStatusIndicator('listening');
+                        window.voiceController.speak("Poslouchám"); // Okamžitá zpětná vazba
+                    } catch (err) {
+                        // Ignorovat chybu, pokud už běží
+                        if (err.name !== 'InvalidStateError') {
+                            console.error("📱 Chyba mobilního startu:", err);
+                        }
+                    }
+                }
+            }, { passive: true }); // Passive true pro lepší výkon scrollu
+        });
+        
+    }, 2000); // Dáme tomu 2 sekundy, než se načte UI
 }
 
+// =========================================================================
+// 🚀 GLOBÁLNÍ INICIALIZACE (Upravená pro Wrapper)
+// =========================================================================
+let voiceController;
+
+const initVoiceApp = () => {
+    // Vytvoříme instanci
+    voiceController = new VoiceController();
+    window.voiceController = voiceController;
+
+    // Pokud jsme na mobilu, spustíme záchranný Wrapper
+    if (isMobileDevice) {
+        setupMobileVoiceControl();
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVoiceApp);
+} else {
+    initVoiceApp();
+}
+
+// Export pro moduly
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
