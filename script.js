@@ -1,3 +1,6 @@
+(function() {
+    'use strict';
+
 const DEBUG_MODE = true ; // Globální přepínač pro logování
 
 // --- Cachování DOM elementů ---
@@ -1173,3 +1176,4 @@ function monitorPerformance() {
 
 monitorPerformance();
 
+})(); // KONEC IIFE - Vše je izolované
