@@ -1,29 +1,26 @@
 /**
- * 🖖 AUDIO DISCONNECT MONITOR
+ * 🖖 AUDIO CONNECTION MONITOR - OPTIMIZED
  * ===========================
- * Autor: Admirál Claude.AI pro více admirála Jiříka
- * Účel: Detekce odpojení Bluetooth i 3.5mm jack audio zařízení a zastavení přehrávání
- * 
- * FUNKCE:
- * - Monitoruje Bluetooth audio zařízení
- * - Monitoruje 3.5mm jack sluchátka/reproduktory
- * - Automaticky zastavuje přehrávání při odpojení
- * - Nezasahuje do audio streamu přehrávače
- * - Lightweight a efektivní
+ * Autor: Admirál Claude.AI & Admirál Jarda pro více admirála Jiříka
+ * Účel: Detekce PŘIPOJENÍ i ODPOJENÍ (Bluetooth, USB Dongle, Jack)
+ * Aktualizace: Zachována podpora JBL Quantum + přidána ÚSPORA ENERGIE
  */
 
-const DEBUG_BLUETOOTH = false; // Debug vypnut - pouze hlášení o odpojení
-
-class AudioDisconnectMonitor {
+class AudioMonitor {
     constructor() {
         this.audioDevices = new Map();
         this.bluetoothDevices = new Set();
         this.jackDevices = new Set();
         this.isMonitoring = false;
         this.checkInterval = null;
-        this.lastDeviceCount = 0;
         
-        // Inicializace po načtení DOM
+        // --- NOVÁ KONFIGURACE INTERVALŮ (Úspora energie) ---
+        this.INTERVALS = {
+            ACTIVE: 2000,      // Okno je aktivní + hraje hudba (Vysoká priorita)
+            BACKGROUND: 5000,  // Okno je na pozadí (Šetří baterii)
+            IDLE: 10000        // Hudba nehraje (Není důvod skenovat agresivně)
+        };
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.initialize());
         } else {
@@ -31,45 +28,22 @@ class AudioDisconnectMonitor {
         }
     }
 
-    /**
-     * Inicializace monitoru
-     */
     async initialize() {
-        // Kontrola podpory prohlížeče
-        if (!this.checkBrowserSupport()) {
-            return; // Tichý návrat při nepodpoře
-        }
-
-        // Počáteční scan zařízení
-        await this.scanAudioDevices();
-        
-        // Spuštění monitorování
-        this.startMonitoring();
-        
-        // Posluchače událostí
+        if (!this.checkBrowserSupport()) return;
+        await this.scanAudioDevices(true); // První scan
+        this.startMonitoring();            // Spuštění s novou logikou
         this.setupEventListeners();
     }
 
-    /**
-     * Kontrola podpory prohlížeče
-     */
     checkBrowserSupport() {
-        return !!(
-            navigator.mediaDevices && 
-            navigator.mediaDevices.enumerateDevices &&
-            window.MediaDeviceInfo
-        );
+        return !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices);
     }
 
-    /**
-     * Skenování audio zařízení
-     */
-    async scanAudioDevices() {
+    async scanAudioDevices(isFirstRun = false) {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
             const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
             
-            // Aktualizace mapy zařízení
             const newDevices = new Map();
             const newBluetoothDevices = new Set();
             const newJackDevices = new Set();
@@ -85,313 +59,221 @@ class AudioDisconnectMonitor {
                 
                 newDevices.set(device.deviceId, deviceInfo);
                 
-                if (deviceInfo.isBluetooth) {
-                    newBluetoothDevices.add(device.deviceId);
-                }
-                
-                if (deviceInfo.isJack) {
-                    newJackDevices.add(device.deviceId);
-                }
+                if (deviceInfo.isBluetooth) newBluetoothDevices.add(device.deviceId);
+                if (deviceInfo.isJack) newJackDevices.add(device.deviceId);
             });
 
-            // Detekce odpojených zařízení
-            if (this.isMonitoring) {
+            if (!isFirstRun && this.isMonitoring) {
                 this.detectDisconnectedDevices(newBluetoothDevices, newJackDevices);
+                this.detectNewDevices(newDevices, newBluetoothDevices, newJackDevices);
             }
 
-            // Aktualizace stavu
             this.audioDevices = newDevices;
             this.bluetoothDevices = newBluetoothDevices;
             this.jackDevices = newJackDevices;
-            this.lastDeviceCount = audioOutputs.length;
             
         } catch (error) {
-            // Tichá chyba - nepotřebujeme logovat
+            // Tichá chyba
         }
     }
 
     /**
-     * Detekce 3.5mm jack zařízení podle názvu/typu
+     * Detekce bezdrátových zařízení (BT + Dongle)
+     * ZACHOVÁNO TVÉ NASTAVENÍ
+     */
+    isBluetoothDevice(device) {
+        const label = (device.label || '').toLowerCase();
+        const wirelessKeywords = [
+            // Klasické BT
+            'bluetooth', 'bt', 'wireless', 'airpods', 'buds', 'headset', 
+            'sony', 'bose', 'beats', 'galaxy', 'xiaomi', 'jabra', 'sennheiser',
+            // Herní Dongle / 2.4GHz (Specificky pro JBL Quantum a další)
+            'quantum', 'jbl', 'dongle', 'usb audio', 'hyperx', 'steelseries', 
+            'corsair', 'logitech', 'razer', 'roccat'
+        ];
+        
+        return wirelessKeywords.some(keyword => label.includes(keyword));
+    }
+
+    /**
+     * Detekce Jack / Analog
+     * ZACHOVÁNO TVÉ NASTAVENÍ
      */
     isJackDevice(device) {
         const label = (device.label || '').toLowerCase();
+        
+        // Pokud jsme to identifikovali jako bezdrát/dongle, není to jack
+        if (this.isBluetoothDevice(device)) return false;
+        
         const jackKeywords = [
-            'headphones', 'headphone', 'earphones', 'earphone', 'earbuds', 'earbud',
-            'speakers', 'speaker', 'lineout', 'line out', 'analog', 'wired',
-            'built-in', 'internal', 'default', 'realtek', 'conexant', 'via',
-            'idt', 'sigmatel', 'creative', 'sound blaster', 'integrated',
-            'onboard', 'motherboard', '3.5mm', 'jack', 'aux', 'audio out'
+            'headphones', 'headphone', 'earphones', 'earbuds', 'speakers', 'speaker', 
+            'lineout', 'analog', 'wired', 'built-in', 'internal', 'realtek', 
+            'conexant', 'creative', '3.5mm', 'jack', 'aux', 'high definition audio'
         ];
         
-        // Pokud obsahuje Bluetooth klíčová slova, není to jack zařízení
-        if (this.isBluetoothDevice(device)) {
-            return false;
-        }
-        
-        // Pokud je to default systémové zařízení, pravděpodobně jack
-        if (label.includes('default') || label.includes('built-in') || 
-            label.includes('speakers') || label.includes('headphones')) {
-            return true;
-        }
-        
+        if (label.includes('default') || label.includes('built-in')) return true;
         return jackKeywords.some(keyword => label.includes(keyword));
     }
-    isBluetoothDevice(device) {
-        const label = (device.label || '').toLowerCase();
-        const bluetoothKeywords = [
-            'bluetooth', 'bt', 'wireless', 'airpods', 'buds', 'headset', 
-            'headphone', 'speaker', 'sony', 'bose', 'jbl', 'beats',
-            'galaxy', 'xiaomi', 'huawei', 'anker', 'jabra', 'sennheiser'
-        ];
-        
-        return bluetoothKeywords.some(keyword => label.includes(keyword));
-    }
 
-    /**
-     * Detekce odpojených zařízení (Bluetooth i Jack)
-     */
-    detectDisconnectedDevices(currentBluetoothDevices, currentJackDevices) {
-        // Najdi odpojená Bluetooth zařízení
-        const disconnectedBluetooth = [...this.bluetoothDevices].filter(
-            deviceId => !currentBluetoothDevices.has(deviceId)
-        );
-        
-        // Najdi odpojená Jack zařízení
-        const disconnectedJack = [...this.jackDevices].filter(
-            deviceId => !currentJackDevices.has(deviceId)
-        );
+    detectDisconnectedDevices(currentBluetooth, currentJack) {
+        const disconnectedBluetooth = [...this.bluetoothDevices].filter(id => !currentBluetooth.has(id));
+        const disconnectedJack = [...this.jackDevices].filter(id => !currentJack.has(id));
 
-        const allDisconnected = [...disconnectedBluetooth, ...disconnectedJack];
-
-        if (allDisconnected.length > 0) {
+        if (disconnectedBluetooth.length > 0 || disconnectedJack.length > 0) {
             this.handleAudioDisconnection(disconnectedBluetooth, disconnectedJack);
         }
     }
 
-    /**
-     * Zpracování odpojení audio zařízení
-     */
-    handleAudioDisconnection(disconnectedBluetooth, disconnectedJack) {
-        // Získej názvy odpojených zařízení
-        const bluetoothNames = disconnectedBluetooth.map(deviceId => {
-            const device = this.audioDevices.get(deviceId);
-            return device ? device.label : 'Neznámé Bluetooth zařízení';
-        });
-        
-        const jackNames = disconnectedJack.map(deviceId => {
-            const device = this.audioDevices.get(deviceId);
-            return device ? device.label : 'Neznámé kabelové zařízení';
-        });
+    detectNewDevices(newDevicesMap, newBluetooth, newJack) {
+        const connectedBluetoothIds = [...newBluetooth].filter(id => !this.bluetoothDevices.has(id));
+        const connectedJackIds = [...newJack].filter(id => !this.jackDevices.has(id));
 
-        // Zastavení přehrávání
-        this.stopAudioPlayback();
-        
-        // Notifikace uživateli
-        this.showDisconnectionNotification(bluetoothNames, jackNames);
+        if (connectedBluetoothIds.length > 0 || connectedJackIds.length > 0) {
+            const btNames = connectedBluetoothIds.map(id => newDevicesMap.get(id)?.label || 'Bezdrátové zařízení');
+            const jackNames = connectedJackIds.map(id => newDevicesMap.get(id)?.label || 'Kabelové zařízení');
+
+            this.handleAudioConnection(btNames, jackNames);
+        }
     }
 
-    /**
-     * Zastavení přehrávání v audio přehrávači
-     */
+    handleAudioDisconnection(disconnectedBluetooth, disconnectedJack) {
+        const names = [
+            ...disconnectedBluetooth.map(id => this.audioDevices.get(id)?.label || 'Headset'),
+            ...disconnectedJack.map(id => this.audioDevices.get(id)?.label || 'Jack')
+        ];
+
+        this.stopAudioPlayback();
+        this.showCustomNotification(`🔴 Odpojeno: ${names.join(', ')}`, 'warning');
+    }
+
+    handleAudioConnection(btNames, jackNames) {
+        const names = [...btNames, ...jackNames];
+        const message = `🟢 Připojeno: ${names.join(', ')}`;
+        
+        this.showCustomNotification(message, 'success');
+        
+        document.dispatchEvent(new CustomEvent('audioConnected', {
+            detail: { names: names, timestamp: Date.now() }
+        }));
+    }
+
     stopAudioPlayback() {
         try {
-            // Pokus o zastavení přes globální audio přehrávač
             const audioPlayer = document.getElementById('audioPlayer');
-            if (audioPlayer && !audioPlayer.paused) {
-                audioPlayer.pause();
-            }
+            if (audioPlayer && !audioPlayer.paused) audioPlayer.pause();
 
-            // Aktualizace tlačítek pokud existují
-            const playButton = document.getElementById('play-button');
-            const pauseButton = document.getElementById('pause-button');
-            
-            if (playButton) playButton.classList.remove('active');
-            if (pauseButton) pauseButton.classList.add('active');
+            const playBtn = document.getElementById('play-button');
+            const pauseBtn = document.getElementById('pause-button');
+            if (playBtn) playBtn.classList.remove('active');
+            if (pauseBtn) pauseBtn.classList.add('active');
 
-            // Dispatch custom event pro ostatní komponenty
             document.dispatchEvent(new CustomEvent('audioDisconnected', {
-                detail: { 
-                    reason: 'Audio zařízení odpojeno',
-                    timestamp: Date.now()
-                }
+                detail: { reason: 'Device removed', timestamp: Date.now() }
             }));
-            
-        } catch (error) {
-            // Tichá chyba při zastavování
-        }
+        } catch (e) {}
     }
 
-    /**
-     * Zobrazení notifikace o odpojení
-     */
-    showDisconnectionNotification(bluetoothNames, jackNames) {
-        let message = '🔴 Audio odpojeno: ';
-        const allNames = [];
-        
-        if (bluetoothNames.length > 0) {
-            allNames.push(...bluetoothNames.map(name => `📱 ${name}`));
-        }
-        
-        if (jackNames.length > 0) {
-            allNames.push(...jackNames.map(name => `🔌 ${name}`));
-        }
-        
-        message += allNames.join(', ') + ' - Přehrávání zastaveno';
-        
-        // Vždy používá vlastní notifikační systém (kvůli konfliktům s tone-meter)
-        this.showCustomNotification(message);
-    }
+    // Původní notifikace - ZACHOVÁNO
+    showCustomNotification(message, type = 'warning') {
+        let notification = document.getElementById('audio-monitor-notification');
+        const bgColor = type === 'success' ? '#2ecc71' : '#ff6b35';
 
-    /**
-     * Vlastní systém notifikací (fallback)
-     */
-    showCustomNotification(message) {
-        // Vytvoření notifikačního elementu s unikátním ID
-        let notification = document.getElementById('audio-disconnect-notification');
         if (!notification) {
             notification = document.createElement('div');
-            notification.id = 'audio-disconnect-notification';
+            notification.id = 'audio-monitor-notification';
             notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #ff6b35;
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 10000;
-                font-family: 'Orbitron', monospace;
-                font-size: 14px;
-                max-width: 350px;
-                opacity: 0;
-                transform: translateX(100%);
+                position: fixed; top: 20px; right: 20px;
+                color: white; padding: 12px 20px; border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000;
+                font-family: 'Orbitron', monospace; font-size: 14px;
+                max-width: 350px; opacity: 0; transform: translateX(100%);
                 transition: all 0.3s ease;
             `;
             document.body.appendChild(notification);
         }
 
+        notification.style.background = bgColor;
         notification.textContent = message;
         notification.style.display = 'block';
         
-        // Animace zobrazení
         setTimeout(() => {
             notification.style.opacity = '1';
             notification.style.transform = 'translateX(0)';
         }, 10);
 
-        // Auto skrytí po 4 sekundách
-        setTimeout(() => {
+        if (this.hideTimeout) clearTimeout(this.hideTimeout);
+        this.hideTimeout = setTimeout(() => {
             notification.style.opacity = '0';
             notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 300);
+            setTimeout(() => { notification.style.display = 'none'; }, 300);
         }, 4000);
     }
 
-    /**
-     * Spuštění monitorování
-     */
+    // --- NOVÁ LOGIKA PRO ÚSPORU ENERGIE (start/stop/update) ---
+
     startMonitoring() {
         if (this.isMonitoring) return;
-
         this.isMonitoring = true;
-        
-        // Pravidelná kontrola zařízení (každé 2 sekundy)
-        this.checkInterval = setInterval(() => {
-            this.scanAudioDevices();
-        }, 2000);
+        this.updateInterval(); // Spustí chytrý interval
     }
 
-    /**
-     * Zastavení monitorování
-     */
     stopMonitoring() {
         if (!this.isMonitoring) return;
-
         this.isMonitoring = false;
-        
-        if (this.checkInterval) {
-            clearInterval(this.checkInterval);
-            this.checkInterval = null;
-        }
+        if (this.checkInterval) clearInterval(this.checkInterval);
     }
 
-    /**
-     * Nastavení event listenerů
-     */
+    // Funkce pro dynamickou změnu rychlosti skenování
+    updateInterval() {
+        if (this.checkInterval) clearInterval(this.checkInterval);
+        if (!this.isMonitoring) return;
+        
+        let intervalTime = this.INTERVALS.ACTIVE; // Default 2000ms
+        
+        // 1. Pokud je stránka skrytá (jiný tab/minimalizováno) -> 5000ms
+        if (document.hidden) {
+            intervalTime = this.INTERVALS.BACKGROUND;
+        }
+        // 2. Pokud je stránka vidět, ale nic NEHRAJE -> 10000ms (Největší úspora)
+        else {
+            const player = document.getElementById('audioPlayer');
+            if (player && player.paused) {
+                intervalTime = this.INTERVALS.IDLE;
+            }
+        }
+
+        this.checkInterval = setInterval(() => this.scanAudioDevices(), intervalTime);
+    }
+
     setupEventListeners() {
-        // Posluchač změn média zařízení
+        // Okamžitá reakce na systémovou změnu (připojení/odpojení HW)
         if (navigator.mediaDevices.addEventListener) {
             navigator.mediaDevices.addEventListener('devicechange', () => {
-                setTimeout(() => this.scanAudioDevices(), 500);
+                this.scanAudioDevices(); // Okamžitý scan
             });
         }
-
-        // Posluchač focus/blur pro pozastavení při neaktivitě
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                // Stránka není viditelná - zpomalení monitorování
-                if (this.checkInterval) {
-                    clearInterval(this.checkInterval);
-                    this.checkInterval = setInterval(() => {
-                        this.scanAudioDevices();
-                    }, 5000); // Kontrola každých 5 sekund
-                }
-            } else {
-                // Stránka je aktivní - normální monitorování
-                if (this.checkInterval) {
-                    clearInterval(this.checkInterval);
-                    this.checkInterval = setInterval(() => {
-                        this.scanAudioDevices();
-                    }, 2000); // Kontrola každé 2 sekundy
-                }
-            }
-        });
-
-        // Cleanup při zavření stránky
-        window.addEventListener('beforeunload', () => {
-            this.stopMonitoring();
-        });
-    }
-
-    /**
-     * Manuální restart monitorování
-     */
-    restart() {
-        this.stopMonitoring();
-        setTimeout(() => {
-            this.scanAudioDevices().then(() => {
-                this.startMonitoring();
-            });
-        }, 1000);
-    }
-
-    /**
-     * Získání stavu monitoru
-     */
-    getStatus() {
-        return {
-            isMonitoring: this.isMonitoring,
-            deviceCount: this.audioDevices.size,
-            bluetoothCount: this.bluetoothDevices.size,
-            jackCount: this.jackDevices.size,
-            devices: Array.from(this.audioDevices.values())
-        };
+        
+        // Změna intervalu při přepnutí tabu (šetří baterii)
+        document.addEventListener('visibilitychange', () => this.updateInterval());
+        
+        // Změna intervalu podle stavu přehrávače (Player events)
+        // Když začne hrát -> zrychlíme kontrolu. Když se pauzne -> zpomalíme.
+        const player = document.getElementById('audioPlayer');
+        if (player) {
+            player.addEventListener('play', () => this.updateInterval());
+            player.addEventListener('pause', () => this.updateInterval());
+        }
+        
+        window.addEventListener('beforeunload', () => this.stopMonitoring());
     }
 }
 
-// Globální instance monitoru
-let audioDisconnectMonitor = null;
-
-// Automatická inicializace
+let audioMonitor = null;
 document.addEventListener('DOMContentLoaded', () => {
-    audioDisconnectMonitor = new AudioDisconnectMonitor();
-    console.log('✅ bluetoothDisconnectMonitor.js - Úspěšně načten a aktivní');
+    audioMonitor = new AudioMonitor();
+    console.log('✅ Audio Monitor (JBL Quantum Edice + Úspora) - Aktivní');
 });
 
-// Export pro možné externí použití
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = AudioDisconnectMonitor;
+    module.exports = AudioMonitor;
 }
