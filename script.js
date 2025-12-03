@@ -2,7 +2,7 @@
 (function() {
     'use strict';
 
-const DEBUG_MODE = true ; // Globální přepínač pro logování
+const DEBUG_MODE = false ; // Globální přepínač pro logování
 
 // --- Cachování DOM elementů ---
 const DOM = {
@@ -1192,3 +1192,4 @@ console.log("🚀 script.js: Funkce přehrávače jsou nyní přístupné pro hl
 })(); // KONEC IIFE - Vše je izolované
 
 =========řádek 1194==========//
+
