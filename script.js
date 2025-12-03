@@ -1,3 +1,4 @@
+
 (function() {
     'use strict';
 
@@ -1157,6 +1158,7 @@ window.addEventListener('track-preloaded', (e) => {
     });
 });
 
+//===========řádek 1161=========//
 // Performance monitoring (pouze pro debug)
 let frameCount = 0;
 let lastFpsUpdate = Date.now();
@@ -1176,4 +1178,17 @@ function monitorPerformance() {
 
 monitorPerformance();
 
+
+// =================================================================
+// 🖖 EXPORT FUNKCÍ PRO HLASOVÉ OVLÁDÁNÍ (Komunikační můstek)
+// =================================================================
+// Tímto zpřístupníme vnitřní funkce přehrávače pro voiceControl.js
+window.playTrack = playTrack;
+window.playNextTrack = playNextTrack;
+window.playPrevTrack = playPrevTrack;
+
+console.log("🚀 script.js: Funkce přehrávače jsou nyní přístupné pro hlasové ovládání.");
+
 })(); // KONEC IIFE - Vše je izolované
+
+=========řádek 1194==========//
