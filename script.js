@@ -1191,5 +1191,6 @@ console.log("🚀 script.js: Funkce přehrávače jsou nyní přístupné pro hl
 
 })(); // KONEC IIFE - Vše je izolované
 
-=========řádek 1194==========//
+//=========řádek 1194==========//
+
 
