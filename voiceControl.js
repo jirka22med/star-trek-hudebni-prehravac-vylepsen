@@ -2,6 +2,10 @@
  * 🖖 STAR TREK VOICE CONTROL - PUSH-TO-TALK EDITION
  * Více admirál Jiřík & Admirál Claude.AI
  * "Press V to command!" - Smart PTT system
+ * * AKTUALIZACE:
+ * - Návrat k plné struktuře (bez osekávání)
+ * - Oprava hlasitosti (delegování na script.js)
+ * - Podpora JBL Quantum
  */
 
 const DEBUG_VOICE = true;
@@ -14,8 +18,9 @@ class VoiceController {
         this.isEnabled = false;
         
         // Audio management
-        this.originalVolume = 1.0;
+        // this.originalVolume = 1.0; // Původní proměnná (nepoužijeme pro obnovu, viz níže)
         this.listeningVolume = 0.1; // 10% při naslouchání
+        this.savedSliderValue = 0.5; // NOVÉ: Pamatujeme si pozici slideru
         
         // Settings
         this.confidence = 0.7;
@@ -23,7 +28,7 @@ class VoiceController {
         this.voiceResponses = true;
         this.responseVoice = null;
         
-        // 🆕 Audio device management
+        // Audio device management
         this.audioDevices = [];
         this.selectedMicrophoneId = null;
         this.mediaStream = null;
@@ -40,14 +45,14 @@ class VoiceController {
     }
 
     async init() {
-        if (DEBUG_VOICE) console.log("🎤 VoiceController PTT: Inicializace");
+        if (DEBUG_VOICE) console.log("🎤 VoiceController PTT: Inicializace (Full Version)");
         
         if (!this.checkBrowserSupport()) {
             this.showNotification("Váš prohlížeč nepodporuje rozpoznávání řeči", 'error');
             return;
         }
         
-        // 🆕 Detekce dostupných audio zařízení
+        // Detekce dostupných audio zařízení
         await this.detectAudioDevices();
         
         this.setupCommands();
@@ -64,7 +69,7 @@ class VoiceController {
         return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     }
 
-    // 🆕 Detekce audio zařízení (mikrofony)
+    // Detekce audio zařízení (mikrofony)
     async detectAudioDevices() {
         try {
             // Požádat o permissions
@@ -122,6 +127,7 @@ class VoiceController {
     }
 
     setupCommands() {
+        // Zde zachováváme tvou původní strukturu mapování příkazů
         const commands = [
             // Základní ovládání
             { patterns: ['přehrát', 'play', 'spustit'], action: 'play', description: 'Spustí přehrávání' },
@@ -144,12 +150,35 @@ class VoiceController {
             { patterns: ['warp speed', 'warp'], action: 'warpSpeed', description: 'Rychlé přehrávání' },
             { patterns: ['impulse', 'normální rychlost'], action: 'normalSpeed', description: 'Normální rychlost' },
             { patterns: ['beam me up', 'random'], action: 'randomTrack', description: 'Náhodná skladba' },
+            
             // Nápověda / Manuál
             { patterns: ['manuál', 'nápověda', 'co umíš', 'pomoc'], action: 'openManual', description: 'Otevře manuál ovládání' },
+            { patterns: ['zavřít manuál', 'zavřít', 'close'], action: 'closeManual', description: 'Zavře manuál' },
             
             // Příkazy pro diagnostiku
             { patterns: ['test mikrofonu', 'microphone test', 'test mic'], action: 'testMicrophone', description: 'Test mikrofonu' },
-            { patterns: ['seznam mikrofonů', 'list microphones', 'which microphone'], action: 'listMicrophones', description: 'Seznam dostupných mikrofonů' }
+            { patterns: ['seznam mikrofonů', 'list microphones', 'which microphone'], action: 'listMicrophones', description: 'Seznam dostupných mikrofonů' },
+                
+            // 1. Hlasitost MINIMUM (Okamžité ticho/nula)
+    { 
+        patterns: ['hlasitost minimum', 'minimální hlasitost', 'ticho', 'ztišit úplně'], 
+        action: 'volumeMin', 
+        description: 'Nastaví hlasitost na 0' 
+    },
+
+    { 
+        patterns: ['hlasitost', 'nastav', 'úroveň', 'dej to na'], 
+        action: 'setVolumeExact', 
+        description: 'Nastaví přesná procenta (např. "Hlasitost 50")' 
+    },
+        
+        // 3. PŘEPÍNÁNÍ SKLADEB PODLE ČÍSLA (Numerický skok)
+    // Funguje na: "Skladba 5", "Stopa 10", "Přehrát číslo 42"
+    { 
+        patterns: ['skladba', 'stopa', 'track', 'číslo', 'přehrát číslo'], 
+        action: 'playTrackNumber', 
+        description: 'Přehraje konkrétní číslo skladby (např. "Skladba 5")' 
+    }
         ];
 
         commands.forEach(cmd => {
@@ -168,7 +197,6 @@ class VoiceController {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         this.recognition = new SpeechRecognition();
         
-        // ⚡ KLÍČOVÁ ZMĚNA: Continuous = FALSE
         this.recognition.continuous = false;
         this.recognition.interimResults = false;
         this.recognition.lang = this.language;
@@ -184,8 +212,8 @@ class VoiceController {
             this.isListening = false;
             this.isPTTActive = false;
             this.updateStatusIndicator('inactive');
-            this.restoreAudioVolume();
-            this.releaseMediaStream(); // 🆕 Uvolnit stream po skončení
+            this.restoreAudioVolume(); // Zde se aplikuje nová hlasitost
+            this.releaseMediaStream();
             if (DEBUG_VOICE) console.log("🎤 Naslouchání ukončeno");
         };
         
@@ -212,8 +240,6 @@ class VoiceController {
                 console.log("🎤 Rozpoznáno:", transcript, "Confidence:", confidence);
             }
             
-            // 🛠️ OPRAVA PRO EDGE: Někdy vrací confidence 0, i když rozumí perfektně.
-            // Pokud transcript není prázdný, bereme to jako platný příkaz.
             if (confidence >= this.confidence || (confidence === 0 && transcript.length > 0)) {
                 this.processCommand(transcript);
             } else {
@@ -356,58 +382,175 @@ class VoiceController {
                 this.generateStatusReport();
                 break;
                 
-            // 🆕 Diagnostické příkazy
             case 'testMicrophone':
-                /*await*/ this.testMicrophone();
+                this.testMicrophone();
                 break;
                 
             case 'listMicrophones':
                 this.listAvailableMicrophones();
                 break;
                 
-                case 'openManual':
-    this.showHelp(); // ✅ Voláme přímo tu novou funkci!
-    // Benderova hláška už je uvnitř funkce showHelp, takže ji sem psát nemusíš
-    break;
+            case 'openManual':
+                this.showHelp();
+                break;
 
-case 'closeManual': // 🆕 Přidej i zavírání hlasem
-    const modal = document.getElementById('voice-help-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        this.speak("Manuál zavřen.");
-    }
-    break;
+            case 'closeManual':
+                const modal = document.getElementById('voice-help-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    this.speak("Manuál zavřen.");
+                }
+                break;
+                
+                case 'volumeMin':
+            this.setVolume(0); // Nastaví slider na 0
+            this.speak("Hlasitost na minimu.");
+            break;
+
+        case 'setVolumeExact':
+            // 🧠 INTELIGENTNÍ ANALÝZA:
+            // Regulární výraz /(\d+)/ hledá v textu (transcript) jakékoliv číslo.
+            const match = transcript.match(/(\d+)/); 
+            
+            if (match) {
+                let vol = parseInt(match[0], 10); // Převedeme text na číslo
+                
+                // Bezpečnostní pojistka (aby nešlo nastavit 200%)
+                if (vol > 100) vol = 100;
+                if (vol < 0) vol = 0;
+                
+                // Přepočet na desetinné číslo pro slider (55% = 0.55)
+                this.setVolume(vol / 100);
+                
+                this.speak(`Provádím. Hlasitost ${vol} procent.`);
+            } else {
+                this.speak("Nerozuměl jsem číslu. Zopakujte prosím.");
+            }
+            break;
+                
+                case 'playTrackNumber':
+            // 1. Najdeme číslo v příkazu
+            const trackMatch = transcript.match(/(\d+)/);
+            
+            if (trackMatch) {
+                const trackNumber = parseInt(trackMatch[0], 10); // Číslo od člověka (např. 1)
+                const trackIndex = trackNumber - 1;              // Index pro stroj (např. 0)
+                
+                // 2. Kontrola, jestli máme přístup k playlistu (window.tracks z script.js)
+                const totalTracks = window.tracks ? window.tracks.length : 0;
+
+                // 3. Bezpečnostní kontrola (existuje taková skladba?)
+                if (trackIndex >= 0 && trackIndex < totalTracks) {
+                    
+                    // 4. Volání funkce ze script.js
+                    // Zkusíme najít globální funkci playTrack
+                    if (typeof window.playTrack === 'function') {
+                        window.playTrack(trackIndex);
+                        this.speak(`Přehrávám skladbu číslo ${trackNumber}.`);
+                    } else {
+                        // Záložní plán, pokud by funkce nebyla v okně přímo
+                        console.warn("Funkce playTrack nenalezena v globálním rozsahu.");
+                        this.speak("Nemohu spojit komunikační kanál s přehrávačem.");
+                    }
+                    
+                } else {
+                    this.speak(`Skladba číslo ${trackNumber} neexistuje. Playlist má ${totalTracks} skladeb.`);
+                }
+            } else {
+                this.speak("Nerozuměl jsem číslu skladby.");
+            }
+            break;
         }
+        
         
         this.showCommandFeedback(command.action, transcript);
     }
+
+    // =================================================================
+    // 🛠️ OPRAVENÁ LOGIKA HLASITOSTI (Verze 2.0 - Okamžitá reakce)
+    // =================================================================
 
     adjustVolume(delta) {
         const volumeSlider = document.getElementById('volume-slider');
         if (!volumeSlider) return;
         
-        const currentVolume = parseFloat(volumeSlider.value);
-        const newVolume = Math.max(0, Math.min(1, currentVolume + delta));
+        // Vycházíme z uložené pozice slideru
+        const currentVal = this.savedSliderValue;
+        const newVal = Math.max(0, Math.min(1, currentVal + delta));
         
-        volumeSlider.value = newVolume;
+        // 1. Aktualizujeme vizuálně slider
+        volumeSlider.value = newVal;
+        
+        // 2. Uložíme novou hodnotu do paměti
+        this.savedSliderValue = newVal;
+
+        // 3. 🚨 ZÁSADNÍ OPRAVA: Ihned voláme script.js!
+        // Tím donutíme hlavní skript, aby okamžitě přepočítal logaritmus a změnil zvuk.
         volumeSlider.dispatchEvent(new Event('input'));
+        
+        if (DEBUG_VOICE) console.log(`🎤 Slider změněn na: ${newVal} (Signál odeslán)`);
     }
 
     setVolume(volume) {
         const volumeSlider = document.getElementById('volume-slider');
         if (!volumeSlider) return;
         
-        volumeSlider.value = Math.max(0, Math.min(1, volume));
+        const newVal = Math.max(0, Math.min(1, volume));
+        
+        // 1. Nastavíme a uložíme
+        volumeSlider.value = newVal;
+        this.savedSliderValue = newVal;
+
+        // 2. 🚨 ZÁSADNÍ OPRAVA: Ihned voláme script.js!
         volumeSlider.dispatchEvent(new Event('input'));
+        
+        if (DEBUG_VOICE) console.log(`🎤 Slider nastaven na: ${newVal} (Signál odeslán)`);
+    }
+    // =================================================================
+    // 🔊 AUDIO DUCKING (ZTLUMENÍ PŘI MLUVENÍ)
+    // =================================================================
+
+    saveAndDuckAudio() {
+        const audioPlayer = document.getElementById('audioPlayer');
+        const volumeSlider = document.getElementById('volume-slider');
+        
+        if (!audioPlayer || !volumeSlider) return;
+        
+        // 1. Uložíme si AKTUÁLNÍ pozici slideru
+        this.savedSliderValue = parseFloat(volumeSlider.value);
+        
+        // 2. Ztlumíme fyzicky přehrávač (Ducking)
+        audioPlayer.volume = this.listeningVolume;
+        
+        if (DEBUG_VOICE) {
+            console.log(`🎤 Audio ztlumeno (Slider byl na: ${this.savedSliderValue})`);
+        }
+    }
+
+    restoreAudioVolume() {
+        const audioPlayer = document.getElementById('audioPlayer');
+        const volumeSlider = document.getElementById('volume-slider');
+        
+        if (!audioPlayer || !volumeSlider) return;
+        
+        // 1. Nastavíme slider na hodnotu (původní nebo změněnou příkazem)
+        volumeSlider.value = this.savedSliderValue;
+        
+        // 2. KLÍČOVÝ KROK: Vyvoláme 'input' event
+        // Toto donutí script.js, aby si přečetl novou hodnotu slideru,
+        // provedl logaritmický výpočet a uložil to do Firestore.
+        volumeSlider.dispatchEvent(new Event('input'));
+        
+        if (DEBUG_VOICE) console.log(`🎤 Audio obnoveno, slider: ${this.savedSliderValue}, event odeslán.`);
     }
 
     generateStatusReport() {
         const audioPlayer = document.getElementById('audioPlayer');
         const trackTitle = document.getElementById('trackTitle')?.textContent || "Neznámá";
         const isPlaying = audioPlayer && !audioPlayer.paused;
-        const volume = audioPlayer ? Math.round(audioPlayer.volume * 100) : 0;
+        const volume = document.getElementById('volume-slider')?.value * 100 || 0;
         
-        const report = `Status report: Přehrávač je ${isPlaying ? 'aktivní' : 'v pohotovosti'}. Aktuální skladba: ${trackTitle}. Hlasitost: ${volume} procent.`;
+        const report = `Status report: Přehrávač je ${isPlaying ? 'aktivní' : 'v pohotovosti'}. Aktuální skladba: ${trackTitle}. Hlasitost: ${Math.round(volume)} procent.`;
         
         this.speak(report);
     }
@@ -423,7 +566,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
         
-        if (DEBUG_VOICE) console.log("🎤 Mluvím:", text);
+        if (DEBUG_VOICE) console.log("🤖 Bender mluví:", text);
         
         speechSynthesis.speak(utterance);
     }
@@ -445,7 +588,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         
         this.isPTTActive = true;
         
-        // 🆕 Získat MediaStream s preferovaným mikrofonem
+        // Získat MediaStream s preferovaným mikrofonem
         try {
             await this.acquireMediaStream();
         } catch (error) {
@@ -469,7 +612,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         }
     }
 
-    // 🆕 Získání MediaStream s vybraným mikrofonem
+    // Získání MediaStream s vybraným mikrofonem
     async acquireMediaStream() {
         // Zavřít předchozí stream pokud existuje
         this.releaseMediaStream();
@@ -511,38 +654,11 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         }
     }
 
-    // 🆕 Uvolnění MediaStream
+    // Uvolnění MediaStream
     releaseMediaStream() {
         if (this.mediaStream) {
             this.mediaStream.getTracks().forEach(track => track.stop());
             this.mediaStream = null;
-        }
-    }
-
-    saveAndDuckAudio() {
-        const audioPlayer = document.getElementById('audioPlayer');
-        if (!audioPlayer) return;
-        
-        // Uložit aktuální hlasitost
-        this.originalVolume = audioPlayer.volume;
-        
-        // Ztlumit na 10%
-        audioPlayer.volume = this.listeningVolume;
-        
-        if (DEBUG_VOICE) {
-            console.log(`🎤 Audio ztlumeno: ${this.originalVolume} -> ${this.listeningVolume}`);
-        }
-    }
-
-    restoreAudioVolume() {
-        const audioPlayer = document.getElementById('audioPlayer');
-        if (!audioPlayer) return;
-        
-        // Krok C: Vrátit původní hlasitost
-        audioPlayer.volume = this.originalVolume;
-        
-        if (DEBUG_VOICE) {
-            console.log(`🎤 Audio obnoveno: ${this.listeningVolume} -> ${this.originalVolume}`);
         }
     }
 
@@ -562,7 +678,6 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
             controlsDiv.appendChild(this.toggleBtn);
         }
 
-        // 🆕 Připojení na existující PTT trigger tlačítka
         this.attachPTTTriggers();
     }
 
@@ -654,7 +769,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
                 animation: voiceSuccess 0.3s ease-in-out;
             }
             
-            /* 🆕 PTT Trigger Button Styles */
+            /* PTT Trigger Button Styles */
             .voice-ptt-trigger {
                 cursor: pointer;
                 user-select: none;
@@ -691,6 +806,48 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
                 0% { transform: scale(1); opacity: 1; }
                 50% { transform: scale(1.5); opacity: 0.8; }
                 100% { transform: scale(1); opacity: 1; }
+            }
+            
+            /* === STYLY PRO BENDERŮV MANUÁL === */
+            .voice-help-modal {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.85);
+                display: flex; justify-content: center; align-items: center;
+                z-index: 9999; backdrop-filter: blur(5px);
+                font-family: 'Segoe UI', sans-serif;
+            }
+            .voice-help-modal.hidden { display: none; }
+            
+            .voice-help-content {
+                width: 600px; max-width: 95%; max-height: 85vh;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border: 2px solid #ffc107; border-radius: 12px;
+                box-shadow: 0 0 30px rgba(255, 193, 7, 0.4);
+                display: flex; flex-direction: column; color: #fff;
+            }
+            
+            .voice-help-header {
+                background: linear-gradient(90deg, #ffc107, #ff9800); color: #000;
+                padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            }
+            .voice-help-header h3 { margin: 0; font-weight: bold; }
+            
+            .close-help { background: none; border: none; font-size: 24px; cursor: pointer; color: #000; font-weight: bold; }
+            
+            .commands-list-container { padding: 0; overflow-y: auto; flex: 1; }
+            
+            .command-row {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 20px;
+                display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;
+            }
+            .command-row:hover { background: rgba(255, 193, 7, 0.1); }
+            
+            .cmd-trigger { color: #ffc107; font-family: monospace; font-weight: bold; font-size: 1.1em; width: 55%; }
+            .cmd-desc { color: #ccc; width: 45%; text-align: right; font-style: italic; }
+            
+            .voice-help-footer {
+                padding: 10px; text-align: center; font-size: 12px; color: #888;
+                background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.1);
             }
         `;
         
@@ -753,7 +910,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
 
     async enable() {
         try {
-            // 🆕 Re-detekce zařízení při každé aktivaci
+            // Re-detekce zařízení při každé aktivaci
             await this.detectAudioDevices();
             
             // Požádat o přístup s preferovaným mikrofonem
@@ -801,7 +958,6 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
             this.recognition.stop();
         }
         
-        // 🆕 Uvolnit všechny streamy
         this.releaseMediaStream();
         
         this.toggleBtn.classList.remove('active');
@@ -822,7 +978,6 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         }
     }
 
-    // 🆕 Test mikrofonu
     async testMicrophone() {
         this.speak("Spouštím test mikrofonu");
         
@@ -857,7 +1012,6 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         }
     }
 
-    // 🆕 Seznam dostupných mikrofonů
     listAvailableMicrophones() {
         if (this.audioDevices.length === 0) {
             this.speak("Žádné mikrofony nebyly detekovány");
@@ -879,116 +1033,7 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         this.speak(`Detekováno ${this.audioDevices.length} mikrofonů. Aktuálně používám ${currentMic?.label || 'výchozí mikrofon'}`);
     }
 
-    // Persistence
-    async saveSettings() {
-        const settings = {
-            isEnabled: this.isEnabled,
-            voiceResponses: this.voiceResponses,
-            confidence: this.confidence,
-            language: this.language,
-            timestamp: Date.now()
-        };
-
-        localStorage.setItem('voiceControlSettings', JSON.stringify(settings));
-
-        if (DEBUG_VOICE) console.log("🎤 Nastavení uloženo");
-    }
-
-    async loadSettings() {
-        const savedSettings = localStorage.getItem('voiceControlSettings');
-        if (savedSettings) {
-            try {
-                const settings = JSON.parse(savedSettings);
-                this.isEnabled = settings.isEnabled ?? false;
-                this.voiceResponses = settings.voiceResponses ?? true;
-                this.confidence = settings.confidence ?? 0.7;
-                this.language = settings.language ?? 'cs-CZ';
-                
-                if (this.isEnabled) {
-                    this.toggleBtn.classList.add('active');
-                }
-                
-                if (DEBUG_VOICE) console.log("🎤 Nastavení načteno");
-            } catch (error) {
-                console.error("🎤 Chyba při načítání nastavení:", error);
-            }
-        }
-    }
-
-    // =========================================================================
-    // 🎨 SUPER-BLOK: STYLY + MANUÁL
-    // =========================================================================
-
-    injectStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            /* === PŮVODNÍ STYLY (Tlačítko, Indikátory, PTT) === */
-            .voice-control-toggle { position: relative; transition: all 0.3s ease; }
-            .voice-control-toggle.active { background: rgba(255, 193, 7, 0.2); color: #ffc107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
-            
-            .voice-status-indicator { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: #666; transition: all 0.3s ease; }
-            .voice-status-indicator.listening { background: #28a745; animation: voicePulse 1s ease-in-out infinite; }
-            .voice-status-indicator.processing { background: #ffc107; animation: voiceProcessing 0.5s ease-in-out infinite alternate; }
-            .voice-status-indicator.error { background: #dc3545; animation: voiceError 0.2s ease-in-out 3; }
-            .voice-status-indicator.command-executed { background: #00d4ff; animation: voiceSuccess 0.3s ease-in-out; }
-            
-            /* PTT Trigger Button Styles */
-            .voice-ptt-trigger { cursor: pointer; user-select: none; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
-            .voice-ptt-trigger.ptt-active { background: rgba(255, 193, 7, 0.3) !important; box-shadow: 0 0 15px rgba(255, 193, 7, 0.6) !important; transform: scale(1.05); }
-            .voice-ptt-trigger:active { transform: scale(0.95); }
-            
-            @keyframes voicePulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
-            @keyframes voiceProcessing { 0% { opacity: 0.7; } 100% { opacity: 1; } }
-            @keyframes voiceError { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
-            @keyframes voiceSuccess { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
-
-            /* === 🆕 NOVÉ STYLY PRO BENDERŮV MANUÁL === */
-            .voice-help-modal {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0, 0, 0, 0.85);
-                display: flex; justify-content: center; align-items: center;
-                z-index: 9999; backdrop-filter: blur(5px);
-                font-family: 'Segoe UI', sans-serif;
-            }
-            .voice-help-modal.hidden { display: none; }
-            
-            .voice-help-content {
-                width: 600px; max-width: 95%; max-height: 85vh;
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                border: 2px solid #ffc107; border-radius: 12px;
-                box-shadow: 0 0 30px rgba(255, 193, 7, 0.4);
-                display: flex; flex-direction: column; color: #fff;
-            }
-            
-            .voice-help-header {
-                background: linear-gradient(90deg, #ffc107, #ff9800); color: #000;
-                padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
-            }
-            .voice-help-header h3 { margin: 0; font-weight: bold; }
-            
-            .close-help { background: none; border: none; font-size: 24px; cursor: pointer; color: #000; font-weight: bold; }
-            
-            .commands-list-container { padding: 0; overflow-y: auto; flex: 1; }
-            
-            .command-row {
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 20px;
-                display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;
-            }
-            .command-row:hover { background: rgba(255, 193, 7, 0.1); }
-            
-            .cmd-trigger { color: #ffc107; font-family: monospace; font-weight: bold; font-size: 1.1em; width: 55%; }
-            .cmd-desc { color: #ccc; width: 45%; text-align: right; font-style: italic; }
-            
-            .voice-help-footer {
-                padding: 10px; text-align: center; font-size: 12px; color: #888;
-                background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.1);
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    // --- FUNKCE PRO ZOBRAZENÍ MANUÁLU ---
-
+    // --- MANUÁL FUNKCE ---
     showHelp() {
         if (!document.getElementById('voice-help-modal')) {
             this.createHelpModal();
@@ -1050,15 +1095,46 @@ case 'closeManual': // 🆕 Přidej i zavírání hlasem
         listContainer.innerHTML = html;
     }
 
-} // ✅✅✅ TATO ZÁVORKA JE KRITICKÁ - UKONČUJE TŘÍDU VoiceController AŽ TADY!
+    // Persistence
+    async saveSettings() {
+        const settings = {
+            isEnabled: this.isEnabled,
+            voiceResponses: this.voiceResponses,
+            confidence: this.confidence,
+            language: this.language,
+            timestamp: Date.now()
+        };
 
+        localStorage.setItem('voiceControlSettings', JSON.stringify(settings));
 
+        if (DEBUG_VOICE) console.log("🎤 Nastavení uloženo");
+    }
 
+    async loadSettings() {
+        const savedSettings = localStorage.getItem('voiceControlSettings');
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                this.isEnabled = settings.isEnabled ?? false;
+                this.voiceResponses = settings.voiceResponses ?? true;
+                this.confidence = settings.confidence ?? 0.7;
+                this.language = settings.language ?? 'cs-CZ';
+                
+                if (this.isEnabled) {
+                    this.toggleBtn.classList.add('active');
+                }
+                
+                if (DEBUG_VOICE) console.log("🎤 Nastavení načteno");
+            } catch (error) {
+                console.error("🎤 Chyba při načítání nastavení:", error);
+            }
+        }
+    }
 
-// ... (Zde končí třída VoiceController - za poslední závorkou }) ...
+} // End of Class
 
 // =========================================================================
-// 📱 MOBILNÍ WRAPPER (Podle instrukcí Admirála Clauda)
+// 📱 MOBILNÍ WRAPPER
 // =========================================================================
 
 // 1. Detekce mobilního zařízení
@@ -1106,7 +1182,7 @@ function setupMobileVoiceControl() {
 }
 
 // =========================================================================
-// 🚀 GLOBÁLNÍ INICIALIZACE (Upravená pro Wrapper)
+// 🚀 GLOBÁLNÍ INICIALIZACE
 // =========================================================================
 let voiceController;
 
@@ -1131,7 +1207,3 @@ if (document.readyState === 'loading') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceController;
 }
-
-
-
-
