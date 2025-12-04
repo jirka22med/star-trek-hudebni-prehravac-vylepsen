@@ -550,12 +550,18 @@ duration: '03:54' },
  { src: 'https://www.dropbox.com/scl/fi/kx7zn7u8aboiz83i1wmtv/HVEZDNA-FLOTILA-NAVZDY-v.7.mp3?rlkey=kn9h5p6ws2o53a7jhfnvrbxz2&st=nowc96cq&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.7' },          
  { src: 'https://www.dropbox.com/scl/fi/7bngpfjtk9wmn6212n06r/HVEZDNA-FLOTILA-NAVZDY-v.8.mp3?rlkey=sq1da27fx83ef4dv9mcuslolt&st=oto5ihq7&dl=1 ', title: 'HVĚZDNÁ FLOTILA NAVŽDY v.8' },
 
+  { src: 'https://www.dropbox.com/scl/fi/94u9it6bis8c22hjv86bm/Jardova-cesta-s-prateli-v.1.mp3?rlkey=popn4lgotuvwmf9u80jb37f61&st=uc26wjd7&dl=1', title: 'Jardova-cesta-s-prateli-v.1' },
+  { src: 'https://www.dropbox.com/scl/fi/71yr1m4xco8hvewasfl4x/Jardova-cesta-s-prateli-v.2.mp3?rlkey=c42yqa3ns4otj4tmwubmlpws5&st=now7enzf&dl=1', title: 'Jardova-cesta-s-prateli-v.2' },
+  { src: 'https://www.dropbox.com/scl/fi/9esgur99r5cu31kmsiyhw/Jardova-cesta-s-prateli-v.3.mp3?rlkey=c3i8vfd3hm5keyg9dsjftttk5&st=iobdq9lc&dl=1', title: 'Jardova-cesta-s-prateli-v.3' },
+  { src: 'https://www.dropbox.com/scl/fi/5mb4ypu4zdcolj2p28vz2/Jardova-cesta-s-prateli-v.4.mp3?rlkey=wwklrfryzzuc4xcs4vs2n7lgg&st=7h4ukj4b&dl=1', title: 'Jardova-cesta-s-prateli-v.4' },
+  { src: 'https://www.dropbox.com/scl/fi/217u0otcntjh44dnkka00/Jardova-cesta-s-prateli-v.5-Top-1.mp3?rlkey=8ba618idnur6vulc462kpohw0&st=dkrdrn6d&dl=1', title: 'Jardova-cesta-s-prateli-v.5-Top-1' },
            
 ];
 
 
 console.log(`🖖 myPlaylist.js načten: ${window.tracks.length} skladeb (verze: ${window.PLAYLIST_VERSION})`);
  
+
 
 
 
