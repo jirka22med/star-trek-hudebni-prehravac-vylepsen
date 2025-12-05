@@ -1,9 +1,8 @@
 /**
- * 🖖 STAR TREK WAKE WORD WATCHER - ANDROID DESTROYER EDITION
- * ===========================================================
- * Soubor: pocitac-ultimate.js
- * Účel: Kompletní obrana proti Android battery killeru
- * Upgrade: Všechny možné triky pro udržení procesu naživu
+ * 🖖 STAR TREK WAKE WORD WATCHER - ULTIMATE STABILITY
+ * ===================================================
+ * Soubor: pocitac.js
+ * Účel: Hlídka "Počítači" + Ochrana proti uspání mikrofonu (Dummy Analyzer)
  */
 
 (function() {
@@ -11,27 +10,18 @@
 
     const DEBUG_WAKE = true;
 
-    class AndroidDestroyerWatcher {
+    class WakeWordWatcher {
         constructor() {
             this.recognition = null;
             this.isWatching = false;
             this.isBenderActive = false;
             
-            // 🛡️ ZÁKLADNÍ AUDIO SHIELDS
+            // 🛡️ AUDIO SHIELDS (Pojistky)
             this.audioContext = null;
-            this.dummyAnalyzer = null;
+            this.dummyAnalyzer = null; // Falešný analyzátor (Trik z Tone Meteru)
             this.micStream = null;
-            this.keepAliveOscillator = null;
+            this.keepAliveOscillator = null; // Tichý výstup
             this.antiPauseHandler = null;
-            this.phantomLoopActive = false;
-            
-            // 🔥 NOVÉ ANDROID KILLERY
-            this.wakeLock = null;
-            this.activeNotification = null;
-            this.contextResurrector = null;
-            this.heartbeatTimer = null;
-            this.visibilityHandler = null;
-            this.serviceWorkerReady = false;
             
             this.keywords = /počítač|computer|haló|příkaz/i;
 
@@ -42,168 +32,13 @@
             if (!this.checkBrowserSupport()) return;
             this.setupRecognition();
             this.createUIToggle();
-            this.registerServiceWorker();
-            this.requestNotificationPermission();
-            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (ANDROID DESTROYER MODE).");
+            
+            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (s technologií Tone Meter).");
         }
 
         checkBrowserSupport() {
             return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
         }
-
-        // =================================================================
-        // 🎯 SERVICE WORKER REGISTRATION
-        // =================================================================
-        
-        async registerServiceWorker() {
-            if (!('serviceWorker' in navigator)) {
-                console.warn('🛡️ Service Worker není podporován');
-                return;
-            }
-
-            try {
-                // Vytvoříme Service Worker inline (Blob URL)
-                const swCode = `
-                    self.addEventListener('message', (event) => {
-                        if (event.data === 'KEEP_ALIVE') {
-                            console.log('🛡️ SW: Keep-alive aktivní');
-                            setInterval(() => {
-                                self.clients.matchAll().then(clients => {
-                                    clients.forEach(client => {
-                                        client.postMessage({type: 'PONG', time: Date.now()});
-                                    });
-                                });
-                            }, 3000);
-                        }
-                    });
-                    
-                    self.addEventListener('fetch', (event) => {
-                        // Dummy handler pro aktivaci SW
-                        event.respondWith(fetch(event.request));
-                    });
-                `;
-                
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                
-                const registration = await navigator.serviceWorker.register(swUrl);
-                console.log('🛡️ Service Worker registrován');
-                
-                if (registration.active) {
-                    registration.active.postMessage('KEEP_ALIVE');
-                    this.serviceWorkerReady = true;
-                }
-                
-                // Listener pro PONG zprávy
-                navigator.serviceWorker.addEventListener('message', (event) => {
-                    if (event.data.type === 'PONG' && DEBUG_WAKE) {
-                        console.log('🛡️ SW Heartbeat:', new Date(event.data.time).toLocaleTimeString());
-                    }
-                });
-                
-            } catch (e) {
-                console.warn('🛡️ SW registrace selhala:', e);
-            }
-        }
-
-        // =================================================================
-        // 🔔 NOTIFICATION SYSTEM
-        // =================================================================
-        
-        async requestNotificationPermission() {
-            if (!('Notification' in window)) return;
-            
-            if (Notification.permission === 'default') {
-                console.log('🔔 Žádám o povolení notifikací...');
-                await Notification.requestPermission();
-            }
-        }
-
-        async activateNotificationShield() {
-            if (!('Notification' in window) || Notification.permission !== 'granted') {
-                console.warn('🔔 Notifikace nejsou povoleny');
-                return;
-            }
-
-            try {
-                // Vytvoř perzistentní notifikaci
-                this.activeNotification = new Notification('🖖 Star Trek Hlídka', {
-                    body: 'Systém aktivně naslouchá hlasovým příkazům',
-                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="80">👁️</text></svg>',
-                    requireInteraction: true, // Android nechá notifikaci viset
-                    silent: true,
-                    tag: 'wake-word-active' // Nahradí předchozí notifikaci
-                });
-
-                // Znovu vytvoř při zavření
-                this.activeNotification.onclose = () => {
-                    if (this.isWatching) {
-                        setTimeout(() => this.activateNotificationShield(), 1000);
-                    }
-                };
-
-                console.log('🔔 Notification shield aktivní');
-            } catch (e) {
-                console.warn('🔔 Notifikace selhala:', e);
-            }
-        }
-
-        deactivateNotificationShield() {
-            if (this.activeNotification) {
-                this.activeNotification.close();
-                this.activeNotification = null;
-            }
-        }
-
-        // =================================================================
-        // 🔋 WAKE LOCK SYSTEM
-        // =================================================================
-        
-        async activateWakeLock() {
-            if (!('wakeLock' in navigator)) {
-                console.warn('🔋 Wake Lock není podporován');
-                return;
-            }
-
-            try {
-                this.wakeLock = await navigator.wakeLock.request('screen');
-                console.log('🔋 Wake Lock aktivní - displej zůstane aktivní');
-
-                // Handler pro opětovnou aktivaci
-                this.wakeLock.addEventListener('release', () => {
-                    console.log('🔋 Wake Lock byl uvolněn');
-                    if (this.isWatching) {
-                        setTimeout(() => this.activateWakeLock(), 500);
-                    }
-                });
-
-            } catch (e) {
-                console.warn('🔋 Wake Lock selhal:', e);
-            }
-
-            // Znovu aktivuj při návratu z pozadí
-            if (!this.visibilityHandler) {
-                this.visibilityHandler = async () => {
-                    if (document.visibilityState === 'visible' && this.isWatching) {
-                        console.log('🔋 Oživuji Wake Lock po návratu...');
-                        await this.activateWakeLock();
-                        await this.reactivateAudioContext();
-                    }
-                };
-                document.addEventListener('visibilitychange', this.visibilityHandler);
-            }
-        }
-
-        releaseWakeLock() {
-            if (this.wakeLock) {
-                this.wakeLock.release();
-                this.wakeLock = null;
-            }
-        }
-
-        // =================================================================
-        // 🎤 SPEECH RECOGNITION SETUP
-        // =================================================================
 
         setupRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -231,29 +66,20 @@
             };
 
             this.recognition.onend = () => {
+                // Díky Dummy Analyzeru by k tomuto mělo docházet méně často
                 if (this.isWatching && !this.isBenderActive) {
                     if (DEBUG_WAKE) console.log("🤖 Hlídka: Restartuji rozpoznávání...");
-                    setTimeout(() => {
-                        try { this.recognition.start(); } catch (e) {}
-                    }, 100);
+                    try { this.recognition.start(); } catch (e) {}
                 }
             };
 
             this.recognition.onerror = (event) => {
-                if (event.error === 'no-speech') return;
-                console.warn('🤖 Recognition error:', event.error);
-                
-                // Restart při chybě
-                if (this.isWatching && !this.isBenderActive) {
-                    setTimeout(() => {
-                        try { this.recognition.start(); } catch (e) {}
-                    }, 1000);
-                }
+                if (event.error === 'no-speech') return; 
             };
         }
 
         // =================================================================
-        // 🛡️ AUDIO CONTEXT SHIELDS + PHANTOM LOOP
+        // 🛡️ AKTIVACE "FALEŠNÉHO VĚDECKÉHO DŮSTOJNÍKA"
         // =================================================================
 
         async activateAudioShields() {
@@ -261,126 +87,55 @@
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
 
-                if (!this.audioContext) {
-                    this.audioContext = new AudioContext();
-                }
-                
-                if (this.audioContext.state === 'suspended') {
-                    await this.audioContext.resume();
-                }
+                if (!this.audioContext) this.audioContext = new AudioContext();
+                if (this.audioContext.state === 'suspended') await this.audioContext.resume();
 
-                // 1. TICHÝ OSCILÁTOR (Výstupní pojistka)
+                // 1. TICHÝ OSCILÁTOR (Výstupní pojistka - aby neusnul reproduktor)
+                // Toto brání mobilu vypnout audio engine
                 if (!this.keepAliveOscillator) {
                     const osc = this.audioContext.createOscillator();
                     const gain = this.audioContext.createGain();
                     osc.type = 'sine';
-                    osc.frequency.value = 0.01; 
-                    gain.gain.value = 0.0001; // Ještě tišší
+                    osc.frequency.value = 0.01; // Neslyšitelné
+                    gain.gain.value = 0.001;    // Minimální signál
                     osc.connect(gain);
                     gain.connect(this.audioContext.destination);
                     osc.start();
                     this.keepAliveOscillator = osc;
-                    console.log('🛡️ Tichý oscilátor aktivní');
                 }
 
-                // 2. MIKROFON + ANALYZÉR + PHANTOM LOOP
+                // 2. FALEŠNÝ ANALYZÁTOR (Vstupní pojistka - Trik Tone Meteru)
+                // Toto nutí mobil držet mikrofon zapnutý
                 if (!this.micStream) {
-                    this.micStream = await navigator.mediaDevices.getUserMedia({ 
-                        audio: {
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true
-                        } 
-                    });
+                    // Vyžádáme si mikrofon přímo (nejen přes Speech API)
+                    this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     
                     const source = this.audioContext.createMediaStreamSource(this.micStream);
                     this.dummyAnalyzer = this.audioContext.createAnalyser();
-                    this.dummyAnalyzer.fftSize = 256;
+                    this.dummyAnalyzer.fftSize = 256; // Malá zátěž
+                    
+                    // Propojíme mikrofon do analyzátoru (nikam dál, aby nebyla vazba)
                     source.connect(this.dummyAnalyzer);
                     
-                    this.phantomLoopActive = true;
-                    this.runPhantomLoop();
-                    console.log('🛡️ Phantom Loop běží');
+                    if (DEBUG_WAKE) console.log("🛡️ Hlídka: Falešný analyzátor aktivován (Mikrofon uzamčen).");
                 }
-
-                // 3. CONTEXT RESURRECTOR (Agresivní oživování)
-                this.startContextResurrector();
 
             } catch (e) {
-                console.warn("🛡️ Audio shields selhaly:", e);
+                console.warn("🛡️ Hlídka: Nelze aktivovat štíty:", e);
             }
 
-            // 4. ANTI-PAUSE PRO AUDIO PLAYER
+            // 3. ANTI-PAUSE (Ochrana přehrávače)
             this.setupAntiPause();
-        }
-
-        // 🧬 Phantom Loop - aktivní čtení dat
-        runPhantomLoop() {
-            if (!this.phantomLoopActive || !this.dummyAnalyzer) return;
-
-            const dataArray = new Uint8Array(this.dummyAnalyzer.frequencyBinCount);
-            this.dummyAnalyzer.getByteFrequencyData(dataArray);
-
-            // Pokračuj ve smyčce
-            requestAnimationFrame(() => this.runPhantomLoop());
-        }
-
-        // 🔥 Context Resurrector - oživuje AudioContext každé 2s
-        startContextResurrector() {
-            if (this.contextResurrector) return;
-
-            this.contextResurrector = setInterval(async () => {
-                if (!this.isWatching) return;
-
-                if (this.audioContext && this.audioContext.state === 'suspended') {
-                    console.log('🔥 Oživuji AudioContext!');
-                    await this.audioContext.resume();
-                }
-
-                // Zkontroluj recognition
-                if (!this.isBenderActive) {
-                    try {
-                        // Restart recognition pokud není aktivní
-                        this.recognition.stop();
-                        setTimeout(() => this.recognition.start(), 100);
-                    } catch(e) {}
-                }
-
-            }, 2000);
-        }
-
-        stopContextResurrector() {
-            if (this.contextResurrector) {
-                clearInterval(this.contextResurrector);
-                this.contextResurrector = null;
-            }
-        }
-
-        // Reaktivace po návratu z pozadí
-        async reactivateAudioContext() {
-            if (this.audioContext && this.audioContext.state === 'suspended') {
-                await this.audioContext.resume();
-            }
-            
-            // Restart recognition
-            if (!this.isBenderActive) {
-                try {
-                    this.recognition.stop();
-                    setTimeout(() => this.recognition.start(), 200);
-                } catch(e) {}
-            }
         }
 
         setupAntiPause() {
             const audioPlayer = document.getElementById('audioPlayer');
             if (audioPlayer && !audioPlayer.paused) {
-                if (this.antiPauseHandler) {
-                    audioPlayer.removeEventListener('pause', this.antiPauseHandler);
-                }
+                if (this.antiPauseHandler) audioPlayer.removeEventListener('pause', this.antiPauseHandler);
 
                 this.antiPauseHandler = () => {
                     if (this.isWatching && !this.isBenderActive) {
-                        console.warn("🛡️ Pokus o vypnutí hudby zablokován.");
+                        console.warn("🛡️ Hlídka: Pokus o vypnutí hudby zablokován.");
                         audioPlayer.play().catch(() => {});
                     }
                 };
@@ -389,16 +144,13 @@
         }
 
         deactivateAudioShields() {
-            this.phantomLoopActive = false;
-
+            // Vypnutí oscilátoru
             if (this.keepAliveOscillator) {
-                try { 
-                    this.keepAliveOscillator.stop(); 
-                    this.keepAliveOscillator.disconnect(); 
-                } catch(e){}
+                try { this.keepAliveOscillator.stop(); } catch(e){}
                 this.keepAliveOscillator = null;
             }
 
+            // Vypnutí mikrofonu (analyzátoru)
             if (this.micStream) {
                 this.micStream.getTracks().forEach(track => track.stop());
                 this.micStream = null;
@@ -409,65 +161,33 @@
                 this.audioContext = null;
             }
 
+            // Vypnutí anti-pause
             const audioPlayer = document.getElementById('audioPlayer');
             if (audioPlayer && this.antiPauseHandler) {
                 audioPlayer.removeEventListener('pause', this.antiPauseHandler);
                 this.antiPauseHandler = null;
             }
             
-            this.stopContextResurrector();
-            
-            if (DEBUG_WAKE) console.log("🛡️ Audio shields deaktivovány.");
+            if (DEBUG_WAKE) console.log("🛡️ Hlídka: Všechny štíty deaktivovány.");
         }
 
         // =================================================================
-        // 💓 HEARTBEAT SYSTEM (Kontrola životnosti)
-        // =================================================================
-
-        startHeartbeat() {
-            if (this.heartbeatTimer) return;
-
-            let heartbeatCount = 0;
-            this.heartbeatTimer = setInterval(() => {
-                if (!this.isWatching) return;
-
-                heartbeatCount++;
-                if (DEBUG_WAKE && heartbeatCount % 10 === 0) {
-                    console.log(`💓 Heartbeat #${heartbeatCount} - Systém žije`);
-                }
-
-                // Kontrola všech systémů
-                if (this.audioContext && this.audioContext.state === 'suspended') {
-                    console.warn('💓 AudioContext suspended! Oživuji...');
-                    this.audioContext.resume();
-                }
-
-            }, 3000);
-        }
-
-        stopHeartbeat() {
-            if (this.heartbeatTimer) {
-                clearInterval(this.heartbeatTimer);
-                this.heartbeatTimer = null;
-            }
-        }
-
-        // =================================================================
-        // 🚀 HLAVNÍ ŘÍZENÍ
+        // 🚀 ŘÍZENÍ
         // =================================================================
 
         triggerMainSystem() {
             if (this.isBenderActive) return;
-            
-            console.log("🤖 Hlídka: HESLO PŘIJATO - Aktivuji Bendera!");
+            console.log("🤖 Hlídka: HESLO PŘIJATO.");
             this.isBenderActive = true;
             this.recognition.stop();
             
+            // Dočasně vypneme štíty, aby měl Bender čistý přístup
+            // this.deactivateAudioShields(); // Volitelné - zkusíme nechat běžet pro plynulost
+
             if (window.voiceController) {
                 window.voiceController.activateListening();
                 this.monitorMainSystem();
             } else {
-                console.warn('🤖 VoiceController nenalezen!');
                 this.isBenderActive = false;
                 this.startWatching(); 
             }
@@ -484,7 +204,7 @@
             }, 1000);
         }
 
-        async startWatching() {
+        startWatching() {
             if (this.isWatching && !this.isBenderActive) {
                 try { this.recognition.start(); } catch(e){}
                 return;
@@ -492,41 +212,27 @@
             
             this.isWatching = true;
             this.updateUI(true);
-
-            // 🔥 AKTIVUJ VŠECHNY ŠTÍTY NAJEDNOU
-            console.log('🛡️🛡️🛡️ AKTIVUJI VŠECHNY ŠTÍTY!');
             
-            await this.activateAudioShields();
-            await this.activateWakeLock();
-            await this.activateNotificationShield();
-            this.startHeartbeat();
+            // Zapneme "Tone Meter" logiku na pozadí
+            this.activateAudioShields();
 
             try {
                 this.recognition.start();
-                console.log("🤖 Hlídka: PLNĚ AKTIVNÍ (Android Destroyer Mode)");
+                console.log("🤖 Hlídka: AKTIVNÍ");
             } catch (e) {
-                console.log("🤖 Hlídka: Již běží.");
+                console.log("🤖 Hlídka: Už běží.");
             }
         }
 
         stopWatching() {
             this.isWatching = false;
             this.updateUI(false);
-            
-            // Deaktivuj všechny systémy
             this.deactivateAudioShields();
-            this.releaseWakeLock();
-            this.deactivateNotificationShield();
-            this.stopHeartbeat();
-            
             this.recognition.stop();
-            console.log("🤖 Hlídka: KOMPLETNĚ DEAKTIVOVÁNA");
+            console.log("🤖 Hlídka: DEAKTIVOVÁNA");
         }
 
-        // =================================================================
-        // 🎨 UI CONTROLS
-        // =================================================================
-
+        // --- UI ---
         createUIToggle() {
             setTimeout(() => {
                 const controls = document.querySelector('.controls');
@@ -536,24 +242,14 @@
                 btn.id = 'wake-word-toggle';
                 btn.className = 'control-button';
                 btn.innerHTML = '👁️'; 
-                btn.title = 'Hlídka (Android Destroyer)';
+                btn.title = 'Hlídka (Auto-Start)';
                 
                 btn.onclick = () => {
                     if (this.isWatching) this.stopWatching();
                     else this.startWatching();
                 };
-                
                 controls.appendChild(btn);
                 this.toggleBtn = btn;
-
-                // Info button
-                const infoBtn = document.createElement('button');
-                infoBtn.className = 'control-button';
-                infoBtn.innerHTML = 'ℹ️';
-                infoBtn.title = 'Informace o štítech';
-                infoBtn.onclick = () => this.showShieldStatus();
-                controls.appendChild(infoBtn);
-
             }, 2000);
         }
 
@@ -563,38 +259,14 @@
                 this.toggleBtn.classList.add('active');
                 this.toggleBtn.style.border = '2px solid #00d4ff'; 
                 this.toggleBtn.style.color = '#00d4ff';
-                this.toggleBtn.style.boxShadow = '0 0 10px #00d4ff';
             } else {
                 this.toggleBtn.classList.remove('active');
                 this.toggleBtn.style.border = '';
                 this.toggleBtn.style.color = '';
-                this.toggleBtn.style.boxShadow = '';
             }
-        }
-
-        showShieldStatus() {
-            const status = `
-🛡️ STAV ŠTÍTŮ:
-━━━━━━━━━━━━━━━━━
-✓ Phantom Loop: ${this.phantomLoopActive ? '🟢 Aktivní' : '🔴 Neaktivní'}
-✓ Wake Lock: ${this.wakeLock ? '🟢 Aktivní' : '🔴 Neaktivní'}
-✓ Notifikace: ${this.activeNotification ? '🟢 Aktivní' : '🔴 Neaktivní'}
-✓ Service Worker: ${this.serviceWorkerReady ? '🟢 Připravený' : '🔴 Nepřipravený'}
-✓ AudioContext: ${this.audioContext ? this.audioContext.state : 'Neaktivní'}
-✓ Heartbeat: ${this.heartbeatTimer ? '🟢 Běží' : '🔴 Zastaven'}
-
-💡 TIP: Pro maximální ochranu:
-   1. Povolte notifikace
-   2. Vypněte battery optimization
-      (Nastavení → Aplikace → Chrome → Baterie → Neomezené)
-            `.trim();
-
-            alert(status);
-            console.log(status);
         }
     }
 
-    // 🚀 AKTIVACE SYSTÉMU
-    window.wakeWordWatcher = new AndroidDestroyerWatcher();
+    window.wakeWordWatcher = new WakeWordWatcher();
 
 })();
