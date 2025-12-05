@@ -1,8 +1,9 @@
 /**
- * 🖖 STAR TREK WAKE WORD WATCHER - ULTIMATE STABILITY
- * ===================================================
+ * 🖖 STAR TREK WAKE WORD WATCHER - PHANTOM LOOP EDITION
+ * =====================================================
  * Soubor: pocitac.js
- * Účel: Hlídka "Počítači" + Ochrana proti uspání mikrofonu (Dummy Analyzer)
+ * Účel: Hlídka "Počítači" + AGRESIVNÍ OCHRANA PROCESU
+ * Upgrade: Přidána aktivní smyčka čtení dat (Phantom Loop)
  */
 
 (function() {
@@ -18,10 +19,11 @@
             
             // 🛡️ AUDIO SHIELDS (Pojistky)
             this.audioContext = null;
-            this.dummyAnalyzer = null; // Falešný analyzátor (Trik z Tone Meteru)
+            this.dummyAnalyzer = null;
             this.micStream = null;
-            this.keepAliveOscillator = null; // Tichý výstup
+            this.keepAliveOscillator = null;
             this.antiPauseHandler = null;
+            this.phantomLoopActive = false; // Nová pojistka smyčky
             
             this.keywords = /počítač|computer|haló|příkaz/i;
 
@@ -32,8 +34,7 @@
             if (!this.checkBrowserSupport()) return;
             this.setupRecognition();
             this.createUIToggle();
-            
-            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (s technologií Tone Meter).");
+            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (Phantom Loop Active).");
         }
 
         checkBrowserSupport() {
@@ -66,7 +67,6 @@
             };
 
             this.recognition.onend = () => {
-                // Díky Dummy Analyzeru by k tomuto mělo docházet méně často
                 if (this.isWatching && !this.isBenderActive) {
                     if (DEBUG_WAKE) console.log("🤖 Hlídka: Restartuji rozpoznávání...");
                     try { this.recognition.start(); } catch (e) {}
@@ -90,42 +90,56 @@
                 if (!this.audioContext) this.audioContext = new AudioContext();
                 if (this.audioContext.state === 'suspended') await this.audioContext.resume();
 
-                // 1. TICHÝ OSCILÁTOR (Výstupní pojistka - aby neusnul reproduktor)
-                // Toto brání mobilu vypnout audio engine
+                // 1. TICHÝ OSCILÁTOR (Výstupní pojistka)
                 if (!this.keepAliveOscillator) {
                     const osc = this.audioContext.createOscillator();
                     const gain = this.audioContext.createGain();
                     osc.type = 'sine';
-                    osc.frequency.value = 0.01; // Neslyšitelné
-                    gain.gain.value = 0.001;    // Minimální signál
+                    osc.frequency.value = 0.01; 
+                    gain.gain.value = 0.001;    
                     osc.connect(gain);
                     gain.connect(this.audioContext.destination);
                     osc.start();
                     this.keepAliveOscillator = osc;
                 }
 
-                // 2. FALEŠNÝ ANALYZÁTOR (Vstupní pojistka - Trik Tone Meteru)
-                // Toto nutí mobil držet mikrofon zapnutý
+                // 2. FALEŠNÝ ANALYZÁTOR + PHANTOM LOOP (Vstupní pojistka)
                 if (!this.micStream) {
-                    // Vyžádáme si mikrofon přímo (nejen přes Speech API)
                     this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     
                     const source = this.audioContext.createMediaStreamSource(this.micStream);
                     this.dummyAnalyzer = this.audioContext.createAnalyser();
-                    this.dummyAnalyzer.fftSize = 256; // Malá zátěž
+                    this.dummyAnalyzer.fftSize = 256; 
                     
-                    // Propojíme mikrofon do analyzátoru (nikam dál, aby nebyla vazba)
                     source.connect(this.dummyAnalyzer);
                     
-                    if (DEBUG_WAKE) console.log("🛡️ Hlídka: Falešný analyzátor aktivován (Mikrofon uzamčen).");
+                    // 🔥 ZPŘÍSNĚNÍ: Aktivní čtení dat (Phantom Loop)
+                    this.phantomLoopActive = true;
+                    this.runPhantomLoop();
+                    
+                    if (DEBUG_WAKE) console.log("🛡️ Hlídka: Phantom Loop spuštěn (Procesor vytížen).");
                 }
 
             } catch (e) {
                 console.warn("🛡️ Hlídka: Nelze aktivovat štíty:", e);
             }
 
-            // 3. ANTI-PAUSE (Ochrana přehrávače)
+            // 3. ANTI-PAUSE
             this.setupAntiPause();
+        }
+
+        // 🧬 Nová metoda: Aktivní čtení dat, aby si systém myslel, že pracujeme
+        runPhantomLoop() {
+            if (!this.phantomLoopActive || !this.dummyAnalyzer) return;
+
+            // Vytvoříme malé pole pro data (nemusí být velké, jde jen o ten proces)
+            const dataArray = new Uint8Array(this.dummyAnalyzer.frequencyBinCount);
+            
+            // Fyzicky přečteme data z mikrofonu
+            this.dummyAnalyzer.getByteFrequencyData(dataArray);
+
+            // Naplánujeme další čtení v příštím framu (cca 60x za sekundu)
+            requestAnimationFrame(() => this.runPhantomLoop());
         }
 
         setupAntiPause() {
@@ -144,13 +158,13 @@
         }
 
         deactivateAudioShields() {
-            // Vypnutí oscilátoru
+            this.phantomLoopActive = false; // Zastavíme smyčku
+
             if (this.keepAliveOscillator) {
-                try { this.keepAliveOscillator.stop(); } catch(e){}
+                try { this.keepAliveOscillator.stop(); this.keepAliveOscillator.disconnect(); } catch(e){}
                 this.keepAliveOscillator = null;
             }
 
-            // Vypnutí mikrofonu (analyzátoru)
             if (this.micStream) {
                 this.micStream.getTracks().forEach(track => track.stop());
                 this.micStream = null;
@@ -161,7 +175,6 @@
                 this.audioContext = null;
             }
 
-            // Vypnutí anti-pause
             const audioPlayer = document.getElementById('audioPlayer');
             if (audioPlayer && this.antiPauseHandler) {
                 audioPlayer.removeEventListener('pause', this.antiPauseHandler);
@@ -177,13 +190,11 @@
 
         triggerMainSystem() {
             if (this.isBenderActive) return;
+            
             console.log("🤖 Hlídka: HESLO PŘIJATO.");
             this.isBenderActive = true;
             this.recognition.stop();
             
-            // Dočasně vypneme štíty, aby měl Bender čistý přístup
-            // this.deactivateAudioShields(); // Volitelné - zkusíme nechat běžet pro plynulost
-
             if (window.voiceController) {
                 window.voiceController.activateListening();
                 this.monitorMainSystem();
@@ -212,8 +223,6 @@
             
             this.isWatching = true;
             this.updateUI(true);
-            
-            // Zapneme "Tone Meter" logiku na pozadí
             this.activateAudioShields();
 
             try {
