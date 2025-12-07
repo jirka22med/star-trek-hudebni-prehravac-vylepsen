@@ -1,8 +1,15 @@
 /**
- * 🖖 STAR TREK WAKE WORD WATCHER - WORD LIMITER EDITION
+ * 🖖 STAR TREK WAKE WORD WATCHER - PRODUCTION READY EDITION
  * =====================================================
- * Soubor: pocitac.js
+ * Soubor: pocitac.js (OPRAVENÁ VERZE)
  * Účel: Hlídka "Počítači" + Ignorování dlouhých keců (Word Limiter)
+ * 
+ * 🔧 OPRAVY V2.0:
+ * - ✅ Memory leak fix v Phantom Loop (reusable buffer)
+ * - ✅ Bezpečný handover protocol (čekání na skutečné ukončení)
+ * - ✅ Anti-Pause listener leak fix (bind metoda)
+ * - ✅ Stop místo Abort (stabilnější na Androidu)
+ * - ✅ Battery optimization (30 FPS místo 60)
  */
 
 (function() {
@@ -21,17 +28,20 @@
             this.dummyAnalyzer = null;
             this.micStream = null;
             this.keepAliveOscillator = null;
-            this.antiPauseHandler = null;
             this.phantomLoopActive = false;
             
-            // ⚙️ NASTAVENÍ FILTRU
-            // Zde si můžeš přidat svoje slova (i ta sprostá, pokud chceš, admirále 😉)
-            // Odděluj je svislítkem |
-            this.keywords = /počítač|computer|haló|příkaz|poslouchej|bender/i;
+            // ✅ OPRAVA: Reusable buffer pro Phantom Loop
+            this.phantomDataBuffer = null;
             
-            // MAXIMÁLNÍ DÉLKA VĚTY (POJISTKA PROTI KECÁNÍ)
-            // Pokud věta přesáhne 6 slov a nebylo tam heslo, zahodíme ji.
+            // ⚙️ NASTAVENÍ FILTRU
+            this.keywords = /počítač|computer|haló|příkaz|poslouchej|bender/i;
             this.maxWordCount = 6; 
+            
+            // ✅ OPRAVA: Timeout handler pro Word Limiter
+            this.abortTimeout = null;
+            
+            // ✅ OPRAVA: Bind Anti-Pause handler jednou
+            this.antiPauseHandler = this.handleAudioPause.bind(this);
 
             this.init();
         }
@@ -40,7 +50,7 @@
             if (!this.checkBrowserSupport()) return;
             this.setupRecognition();
             this.createUIToggle();
-            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (s filtrem ukecanosti).");
+            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (Production v2.0).");
         }
 
         checkBrowserSupport() {
@@ -59,7 +69,12 @@
             this.recognition.onresult = (event) => {
                 if (this.isBenderActive) return;
 
-                // Vezmeme poslední (nejnovější) výsledek
+                // ✅ Clear předchozí abort timeout
+                if (this.abortTimeout) {
+                    clearTimeout(this.abortTimeout);
+                    this.abortTimeout = null;
+                }
+
                 const lastResultIndex = event.results.length - 1;
                 const transcript = event.results[lastResultIndex][0].transcript.trim();
                 const isFinal = event.results[lastResultIndex].isFinal;
@@ -71,38 +86,52 @@
                     return;
                 }
 
-                // 2. POJISTKA PROTI KECÁNÍ (Word Limiter)
-                // Spočítáme slova (mezery + 1)
+                // 2. POJISTKA PROTI KECÁNÍ (Word Limiter) - OPRAVENÁ VERZE
                 const wordCount = transcript.split(/\s+/).length;
 
                 if (DEBUG_WAKE && wordCount > 2) {
-                    // Vypisujeme jen delší útržky, ať nezahlcujeme konzoli
-                    // console.log(`🤖 Hlídka ignoruje (${wordCount} slov): "${transcript}"`);
+                    // Pouze pro debug, nezahlcuje konzoli
+                    // console.log(`🤖 Hlídka monitoring (${wordCount} slov): "${transcript.substring(0, 30)}..."`);
                 }
 
-                // Pokud je věta moc dlouhá a heslo tam nebylo -> RESET
-                if (wordCount > this.maxWordCount) {
-                    if (DEBUG_WAKE) console.log("✂️ Hlídka: Moc dlouhé tlachání bez hesla -> RESET bufferu.");
-                    this.recognition.abort(); // Tímto zahodíme aktuální text a vyčistíme buffer
+                // ✅ OPRAVA: Stop místo Abort + Grace period
+                if (wordCount > this.maxWordCount && isFinal) {
+                    if (DEBUG_WAKE) console.log("✂️ Hlídka: Příliš dlouhý text bez hesla -> Scheduled reset");
+                    
+                    this.abortTimeout = setTimeout(() => {
+                        if (!this.isBenderActive && this.isWatching) {
+                            this.recognition.stop(); // STOP místo ABORT
+                        }
+                    }, 500); // Grace period 500ms
                 }
             };
 
             this.recognition.onend = () => {
+                // ✅ Clear timeout při ukončení
+                if (this.abortTimeout) {
+                    clearTimeout(this.abortTimeout);
+                    this.abortTimeout = null;
+                }
+                
                 if (this.isWatching && !this.isBenderActive) {
-                    // Okamžitý restart (díky abort() v onresult se sem dostaneme rychle)
                     try { this.recognition.start(); } catch (e) {}
                 }
             };
 
             this.recognition.onerror = (event) => {
-                // Ignorujeme chybu 'aborted', protože tu vyvoláváme my schválně
-                if (event.error === 'aborted') return;
-                if (event.error === 'no-speech') return; 
+                // ✅ Clear timeout při chybě
+                if (this.abortTimeout) {
+                    clearTimeout(this.abortTimeout);
+                    this.abortTimeout = null;
+                }
+                
+                if (event.error === 'aborted' || event.error === 'no-speech') return;
+                if (DEBUG_WAKE) console.warn("🤖 Hlídka error:", event.error);
             };
         }
 
         // =================================================================
-        // 🛡️ AKTIVACE "FALEŠNÉHO VĚDECKÉHO DŮSTOJNÍKA" (Phantom Loop)
+        // 🛡️ AKTIVACE AUDIO SHIELDS - OPTIMALIZOVANÁ VERZE
         // =================================================================
 
         async activateAudioShields() {
@@ -126,12 +155,16 @@
                     this.keepAliveOscillator = osc;
                 }
 
-                // 2. FALEŠNÝ ANALYZÁTOR + PHANTOM LOOP
+                // 2. PHANTOM LOOP - OPTIMALIZOVANÁ VERZE
                 if (!this.micStream) {
                     this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     const source = this.audioContext.createMediaStreamSource(this.micStream);
                     this.dummyAnalyzer = this.audioContext.createAnalyser();
                     this.dummyAnalyzer.fftSize = 256; 
+                    
+                    // ✅ OPRAVA: Vytvoř reusable buffer JEDNOU
+                    this.phantomDataBuffer = new Uint8Array(this.dummyAnalyzer.frequencyBinCount);
+                    
                     source.connect(this.dummyAnalyzer);
                     this.phantomLoopActive = true;
                     this.runPhantomLoop();
@@ -142,31 +175,52 @@
             this.setupAntiPause();
         }
 
+        // ✅ OPRAVA: Battery-friendly Phantom Loop (30 FPS)
         runPhantomLoop() {
             if (!this.phantomLoopActive || !this.dummyAnalyzer) return;
-            const dataArray = new Uint8Array(this.dummyAnalyzer.frequencyBinCount);
-            this.dummyAnalyzer.getByteFrequencyData(dataArray);
-            requestAnimationFrame(() => this.runPhantomLoop());
+            
+            // ♻️ Reuse buffer místo vytváření nového
+            this.dummyAnalyzer.getByteFrequencyData(this.phantomDataBuffer);
+            
+            // 🔋 BATTERY SAVING: 30 FPS místo 60
+            setTimeout(() => {
+                requestAnimationFrame(() => this.runPhantomLoop());
+            }, 33); // ~30 FPS
+        }
+
+        // ✅ OPRAVA: Anti-Pause bez memory leaku
+        handleAudioPause(event) {
+            const audioPlayer = event.target;
+            if (this.isWatching && !this.isBenderActive) {
+                console.warn("🛡️ Hlídka: Pokus o vypnutí hudby zablokován.");
+                event.preventDefault();
+                audioPlayer.play().catch(() => {});
+            }
         }
 
         setupAntiPause() {
             const audioPlayer = document.getElementById('audioPlayer');
-            if (audioPlayer && !audioPlayer.paused) {
-                if (this.antiPauseHandler) audioPlayer.removeEventListener('pause', this.antiPauseHandler);
-                this.antiPauseHandler = () => {
-                    if (this.isWatching && !this.isBenderActive) {
-                        console.warn("🛡️ Hlídka: Pokus o vypnutí hudby zablokován.");
-                        audioPlayer.play().catch(() => {});
-                    }
-                };
+            if (!audioPlayer) return;
+            
+            // ✅ Remove před přidáním (čisté removeEventListener funguje správně)
+            audioPlayer.removeEventListener('pause', this.antiPauseHandler);
+            
+            if (!audioPlayer.paused) {
                 audioPlayer.addEventListener('pause', this.antiPauseHandler);
             }
         }
 
         deactivateAudioShields() {
             this.phantomLoopActive = false;
+            
+            // ✅ Clear reusable buffer
+            this.phantomDataBuffer = null;
+            
             if (this.keepAliveOscillator) {
-                try { this.keepAliveOscillator.stop(); this.keepAliveOscillator.disconnect(); } catch(e){}
+                try { 
+                    this.keepAliveOscillator.stop(); 
+                    this.keepAliveOscillator.disconnect(); 
+                } catch(e){}
                 this.keepAliveOscillator = null;
             }
             if (this.micStream) {
@@ -177,30 +231,74 @@
                 this.audioContext.close();
                 this.audioContext = null;
             }
+            
             const audioPlayer = document.getElementById('audioPlayer');
-            if (audioPlayer && this.antiPauseHandler) {
+            if (audioPlayer) {
                 audioPlayer.removeEventListener('pause', this.antiPauseHandler);
-                this.antiPauseHandler = null;
             }
         }
 
         // =================================================================
-        // 🚀 ŘÍZENÍ
+        // 🚀 ŘÍZENÍ - BEZPEČNÝ HANDOVER PROTOCOL
         // =================================================================
 
-        triggerMainSystem() {
+        // ✅ OPRAVA: Pomocná metoda pro čekání na skutečné ukončení
+        waitForRecognitionStop() {
+            return new Promise((resolve) => {
+                if (!this.isWatching) {
+                    resolve();
+                    return;
+                }
+                
+                const checkInterval = setInterval(() => {
+                    // Čekáme, až recognition skutečně skončí
+                    try {
+                        // Pokud můžeme zavolat start, znamená to, že už není aktivní
+                        this.recognition.start();
+                        this.recognition.stop(); // Ihned zastavíme test
+                        clearInterval(checkInterval);
+                        resolve();
+                    } catch (e) {
+                        // Pokud vyhodí InvalidStateError, stále běží
+                        if (e.name !== 'InvalidStateError') {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }
+                }, 50);
+                
+                // Safety timeout
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        // ✅ OPRAVA: Bezpečný handover bez race condition
+        async triggerMainSystem() {
             if (this.isBenderActive) return;
             
             console.log("🤖 Hlídka: HESLO PŘIJATO.");
             this.isBenderActive = true;
-            this.recognition.abort(); // Okamžitě utneme poslech
             
+            // 1. Zastavíme rozpoznávání (STOP místo ABORT)
+            this.recognition.stop();
+            
+            // 2. Počkáme na skutečné ukončení
+            await this.waitForRecognitionStop();
+            
+            // 3. Teprve pak předáme řízení
             if (window.voiceController) {
-                window.voiceController.activateListening();
-                this.monitorMainSystem();
+                // Malý buffer pro jistotu (Android needs this)
+                setTimeout(() => {
+                    window.voiceController.activateListening();
+                    this.monitorMainSystem();
+                }, 100);
             } else {
+                // Fallback
                 this.isBenderActive = false;
-                this.startWatching(); 
+                if (this.isWatching) this.startWatching();
             }
         }
 
@@ -225,7 +323,7 @@
             this.activateAudioShields();
             try {
                 this.recognition.start();
-                console.log("🤖 Hlídka: AKTIVNÍ");
+                console.log("🤖 Hlídka: AKTIVNÍ (v2.0)");
             } catch (e) { }
         }
 
@@ -233,7 +331,14 @@
             this.isWatching = false;
             this.updateUI(false);
             this.deactivateAudioShields();
-            this.recognition.abort();
+            
+            // ✅ Clear timeout při manuálním vypnutí
+            if (this.abortTimeout) {
+                clearTimeout(this.abortTimeout);
+                this.abortTimeout = null;
+            }
+            
+            this.recognition.stop();
             console.log("🤖 Hlídka: DEAKTIVOVÁNA");
         }
 
