@@ -1,8 +1,8 @@
 /**
- * 🖖 STAR TREK WAKE WORD WATCHER - ULTIMATE STABILITY
- * ===================================================
+ * 🖖 STAR TREK WAKE WORD WATCHER - WORD LIMITER EDITION
+ * =====================================================
  * Soubor: pocitac.js
- * Účel: Hlídka "Počítači" + Ochrana proti uspání mikrofonu (Dummy Analyzer)
+ * Účel: Hlídka "Počítači" + Ignorování dlouhých keců (Word Limiter)
  */
 
 (function() {
@@ -16,14 +16,22 @@
             this.isWatching = false;
             this.isBenderActive = false;
             
-            // 🛡️ AUDIO SHIELDS (Pojistky)
+            // 🛡️ AUDIO SHIELDS
             this.audioContext = null;
-            this.dummyAnalyzer = null; // Falešný analyzátor (Trik z Tone Meteru)
+            this.dummyAnalyzer = null;
             this.micStream = null;
-            this.keepAliveOscillator = null; // Tichý výstup
+            this.keepAliveOscillator = null;
             this.antiPauseHandler = null;
+            this.phantomLoopActive = false;
             
-            this.keywords = /počítač|computer|haló|příkaz/i;
+            // ⚙️ NASTAVENÍ FILTRU
+            // Zde si můžeš přidat svoje slova (i ta sprostá, pokud chceš, admirále 😉)
+            // Odděluj je svislítkem |
+            this.keywords = /počítač|computer|haló|příkaz|poslouchej|bender/i;
+            
+            // MAXIMÁLNÍ DÉLKA VĚTY (POJISTKA PROTI KECÁNÍ)
+            // Pokud věta přesáhne 6 slov a nebylo tam heslo, zahodíme ji.
+            this.maxWordCount = 6; 
 
             this.init();
         }
@@ -32,8 +40,7 @@
             if (!this.checkBrowserSupport()) return;
             this.setupRecognition();
             this.createUIToggle();
-            
-            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (s technologií Tone Meter).");
+            if (DEBUG_WAKE) console.log("🤖 Hlídka: Systém připraven (s filtrem ukecanosti).");
         }
 
         checkBrowserSupport() {
@@ -52,34 +59,50 @@
             this.recognition.onresult = (event) => {
                 if (this.isBenderActive) return;
 
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal || event.results[i][0].confidence > 0.6) {
-                        const transcript = event.results[i][0].transcript.trim();
-                        if (DEBUG_WAKE) console.log(`🤖 Hlídka slyší: "${transcript}"`);
+                // Vezmeme poslední (nejnovější) výsledek
+                const lastResultIndex = event.results.length - 1;
+                const transcript = event.results[lastResultIndex][0].transcript.trim();
+                const isFinal = event.results[lastResultIndex].isFinal;
 
-                        if (this.keywords.test(transcript)) {
-                            this.triggerMainSystem();
-                            break; 
-                        }
-                    }
+                // 1. Rychlá kontrola hesla
+                if (this.keywords.test(transcript)) {
+                    if (DEBUG_WAKE) console.log(`🤖 Hlídka ZACHYTILA HESLO: "${transcript}"`);
+                    this.triggerMainSystem();
+                    return;
+                }
+
+                // 2. POJISTKA PROTI KECÁNÍ (Word Limiter)
+                // Spočítáme slova (mezery + 1)
+                const wordCount = transcript.split(/\s+/).length;
+
+                if (DEBUG_WAKE && wordCount > 2) {
+                    // Vypisujeme jen delší útržky, ať nezahlcujeme konzoli
+                    // console.log(`🤖 Hlídka ignoruje (${wordCount} slov): "${transcript}"`);
+                }
+
+                // Pokud je věta moc dlouhá a heslo tam nebylo -> RESET
+                if (wordCount > this.maxWordCount) {
+                    if (DEBUG_WAKE) console.log("✂️ Hlídka: Moc dlouhé tlachání bez hesla -> RESET bufferu.");
+                    this.recognition.abort(); // Tímto zahodíme aktuální text a vyčistíme buffer
                 }
             };
 
             this.recognition.onend = () => {
-                // Díky Dummy Analyzeru by k tomuto mělo docházet méně často
                 if (this.isWatching && !this.isBenderActive) {
-                    if (DEBUG_WAKE) console.log("🤖 Hlídka: Restartuji rozpoznávání...");
+                    // Okamžitý restart (díky abort() v onresult se sem dostaneme rychle)
                     try { this.recognition.start(); } catch (e) {}
                 }
             };
 
             this.recognition.onerror = (event) => {
+                // Ignorujeme chybu 'aborted', protože tu vyvoláváme my schválně
+                if (event.error === 'aborted') return;
                 if (event.error === 'no-speech') return; 
             };
         }
 
         // =================================================================
-        // 🛡️ AKTIVACE "FALEŠNÉHO VĚDECKÉHO DŮSTOJNÍKA"
+        // 🛡️ AKTIVACE "FALEŠNÉHO VĚDECKÉHO DŮSTOJNÍKA" (Phantom Loop)
         // =================================================================
 
         async activateAudioShields() {
@@ -90,49 +113,46 @@
                 if (!this.audioContext) this.audioContext = new AudioContext();
                 if (this.audioContext.state === 'suspended') await this.audioContext.resume();
 
-                // 1. TICHÝ OSCILÁTOR (Výstupní pojistka - aby neusnul reproduktor)
-                // Toto brání mobilu vypnout audio engine
+                // 1. TICHÝ OSCILÁTOR
                 if (!this.keepAliveOscillator) {
                     const osc = this.audioContext.createOscillator();
                     const gain = this.audioContext.createGain();
                     osc.type = 'sine';
-                    osc.frequency.value = 0.01; // Neslyšitelné
-                    gain.gain.value = 0.001;    // Minimální signál
+                    osc.frequency.value = 0.01; 
+                    gain.gain.value = 0.001;    
                     osc.connect(gain);
                     gain.connect(this.audioContext.destination);
                     osc.start();
                     this.keepAliveOscillator = osc;
                 }
 
-                // 2. FALEŠNÝ ANALYZÁTOR (Vstupní pojistka - Trik Tone Meteru)
-                // Toto nutí mobil držet mikrofon zapnutý
+                // 2. FALEŠNÝ ANALYZÁTOR + PHANTOM LOOP
                 if (!this.micStream) {
-                    // Vyžádáme si mikrofon přímo (nejen přes Speech API)
                     this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    
                     const source = this.audioContext.createMediaStreamSource(this.micStream);
                     this.dummyAnalyzer = this.audioContext.createAnalyser();
-                    this.dummyAnalyzer.fftSize = 256; // Malá zátěž
-                    
-                    // Propojíme mikrofon do analyzátoru (nikam dál, aby nebyla vazba)
+                    this.dummyAnalyzer.fftSize = 256; 
                     source.connect(this.dummyAnalyzer);
-                    
-                    if (DEBUG_WAKE) console.log("🛡️ Hlídka: Falešný analyzátor aktivován (Mikrofon uzamčen).");
+                    this.phantomLoopActive = true;
+                    this.runPhantomLoop();
                 }
-
             } catch (e) {
                 console.warn("🛡️ Hlídka: Nelze aktivovat štíty:", e);
             }
-
-            // 3. ANTI-PAUSE (Ochrana přehrávače)
             this.setupAntiPause();
+        }
+
+        runPhantomLoop() {
+            if (!this.phantomLoopActive || !this.dummyAnalyzer) return;
+            const dataArray = new Uint8Array(this.dummyAnalyzer.frequencyBinCount);
+            this.dummyAnalyzer.getByteFrequencyData(dataArray);
+            requestAnimationFrame(() => this.runPhantomLoop());
         }
 
         setupAntiPause() {
             const audioPlayer = document.getElementById('audioPlayer');
             if (audioPlayer && !audioPlayer.paused) {
                 if (this.antiPauseHandler) audioPlayer.removeEventListener('pause', this.antiPauseHandler);
-
                 this.antiPauseHandler = () => {
                     if (this.isWatching && !this.isBenderActive) {
                         console.warn("🛡️ Hlídka: Pokus o vypnutí hudby zablokován.");
@@ -144,31 +164,24 @@
         }
 
         deactivateAudioShields() {
-            // Vypnutí oscilátoru
+            this.phantomLoopActive = false;
             if (this.keepAliveOscillator) {
-                try { this.keepAliveOscillator.stop(); } catch(e){}
+                try { this.keepAliveOscillator.stop(); this.keepAliveOscillator.disconnect(); } catch(e){}
                 this.keepAliveOscillator = null;
             }
-
-            // Vypnutí mikrofonu (analyzátoru)
             if (this.micStream) {
                 this.micStream.getTracks().forEach(track => track.stop());
                 this.micStream = null;
             }
-            
             if (this.audioContext) {
                 this.audioContext.close();
                 this.audioContext = null;
             }
-
-            // Vypnutí anti-pause
             const audioPlayer = document.getElementById('audioPlayer');
             if (audioPlayer && this.antiPauseHandler) {
                 audioPlayer.removeEventListener('pause', this.antiPauseHandler);
                 this.antiPauseHandler = null;
             }
-            
-            if (DEBUG_WAKE) console.log("🛡️ Hlídka: Všechny štíty deaktivovány.");
         }
 
         // =================================================================
@@ -177,13 +190,11 @@
 
         triggerMainSystem() {
             if (this.isBenderActive) return;
+            
             console.log("🤖 Hlídka: HESLO PŘIJATO.");
             this.isBenderActive = true;
-            this.recognition.stop();
+            this.recognition.abort(); // Okamžitě utneme poslech
             
-            // Dočasně vypneme štíty, aby měl Bender čistý přístup
-            // this.deactivateAudioShields(); // Volitelné - zkusíme nechat běžet pro plynulost
-
             if (window.voiceController) {
                 window.voiceController.activateListening();
                 this.monitorMainSystem();
@@ -209,26 +220,20 @@
                 try { this.recognition.start(); } catch(e){}
                 return;
             }
-            
             this.isWatching = true;
             this.updateUI(true);
-            
-            // Zapneme "Tone Meter" logiku na pozadí
             this.activateAudioShields();
-
             try {
                 this.recognition.start();
                 console.log("🤖 Hlídka: AKTIVNÍ");
-            } catch (e) {
-                console.log("🤖 Hlídka: Už běží.");
-            }
+            } catch (e) { }
         }
 
         stopWatching() {
             this.isWatching = false;
             this.updateUI(false);
             this.deactivateAudioShields();
-            this.recognition.stop();
+            this.recognition.abort();
             console.log("🤖 Hlídka: DEAKTIVOVÁNA");
         }
 
@@ -237,13 +242,11 @@
             setTimeout(() => {
                 const controls = document.querySelector('.controls');
                 if (!controls || document.getElementById('wake-word-toggle')) return;
-
                 const btn = document.createElement('button');
                 btn.id = 'wake-word-toggle';
                 btn.className = 'control-button';
                 btn.innerHTML = '👁️'; 
                 btn.title = 'Hlídka (Auto-Start)';
-                
                 btn.onclick = () => {
                     if (this.isWatching) this.stopWatching();
                     else this.startWatching();
