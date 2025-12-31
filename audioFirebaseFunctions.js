@@ -1,1076 +1,414 @@
 // audioFirebaseFunctions.js
-// Tento soubor obsahuje Firebase logiku pro audio přehrávač.
+// 🖖 STAR TREK AUDIO CORE - DEBUGMANAGER EDITION (V3.5 - CLEAN)
+// Verze: 3.5 (Button Visibility ODSTRANĚNO - Separace modulů)
+// ═══════════════════════════════════════════════════════════════════════════════
+// ✅ KOMPLETNÍ KONTROLA PROVEDENA - VÍCE ADMIRÁL JIŘÍK & ADMIRÁL CLAUDE.AI
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// !!! Zde je tvůj konfigurační objekt, který jsi mi poslal !!!
-const firebaseConfig = {
-    apiKey: "AIzaSyCxO2BdPLkvRW9q3tZTW5J39pjjAoR-9Sk", // Tvoje API Key
-    authDomain: "audio-prehravac-v-3.firebaseapp.com", // Tvoje Auth Domain
-    projectId: "audio-prehravac-v-3", // Tvoje Project ID
-    storageBucket: "audio-prehravac-v-3.firebasestorage.app", // Tvoje Storage Bucket
-    messagingSenderId: "343140348126", // Tvoje Messaging Sender ID
-    appId: "1:343140348126:web:c61dc969efb6dcb547524f" // Tvoje App ID
-    //measurementId: "G-6QSYEY22N6" // Pokud nepoužíváš Analytics, může být zakomentováno
-};
+(function() {
+    'use strict';
 
-// Log pro potvrzení, že firebaseConfig byl načten
-console.log("audioFirebaseFunctions.js: Konfigurační objekt Firebase načten a připraven.", firebaseConfig.projectId);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📡 KONFIGURACE FIREBASE (SECURE LINK)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const firebaseConfig = {
+        apiKey: "AIzaSyCxO2BdPLkvRW9q3tZTW5J39pjjAoR-9Sk", 
+        authDomain: "audio-prehravac-v-3.firebaseapp.com",
+        projectId: "audio-prehravac-v-3", 
+        storageBucket: "audio-prehravac-v-3.firebasestorage.app", 
+        messagingSenderId: "343140348126", 
+        appId: "1:343140348126:web:c61dc969efb6dcb547524f" 
+    };
 
-let db; // Proměnná pro instanci Firestore databáze
+    let db; // Globální instance databáze
 
-// Inicializace Firebase aplikace a Firestore databáze
-// Nyní asynchronní, aby počkala na plné načtení Firebase SDK
-window.initializeFirebaseAppAudio = async function() {
-    console.log("audioFirebaseFunctions.js: Spuštěna inicializace Firebase aplikace pro audio přehrávač.");
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📋 LOGOVACÍ SYSTÉM - Napojený na DebugManager
+    // ═══════════════════════════════════════════════════════════════════════════
+    function log(component, message, data = null, type = 'info') {
+        if (!window.DebugManager?.isEnabled('firebase')) return;
+        
+        const style = type === 'error' ? 'background: #550000; color: #ffaaaa' : 
+                      type === 'success' ? 'background: #003300; color: #00ff00' : 
+                      'background: #000033; color: #00ffff';
+        
+        console.groupCollapsed(`%c[${component}] ${message}`, `padding: 2px 5px; border-radius: 3px; font-weight: bold; ${style}`);
+        if (data) console.log("📦 Data:", data);
+        if (type === 'error') console.trace("🔍 Stack Trace (Error)");
+        console.groupEnd();
+    }
 
-    return new Promise((resolve, reject) => {
-        const checkFirebaseReady = setInterval(() => {
-            // Kontrolujeme, zda jsou globální objekty a metody Firebase plně načteny
-            if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function' && typeof firebase.firestore === 'function') {
-                clearInterval(checkFirebaseReady); // Zastavíme kontrolu, Firebase je připraveno
-                console.log("audioFirebaseFunctions.js: Firebase SDK (app & firestore) detekováno a připraveno.");
-                
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    console.log("audioFirebaseFunctions.js: Firebase aplikace inicializována.");
-                } else {
-                    console.log("audioFirebaseFunctions.js: Firebase aplikace již byla inicializována (přeskakuji).");
+    function apiLog(action, details = '') {
+        if (!window.DebugManager?.isEnabled('firebase')) return;
+        console.log(`%c[Firebase API] ${action}`, 'color: #00CCFF; font-weight: bold;', details);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛠️ POMOCNÉ FUNKCE PRO STABILITU
+    // ═══════════════════════════════════════════════════════════════════════════
+    function getFirestoreDB() {
+        if (db) return db;
+        if (window.db) return window.db;
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+            db = firebase.firestore();
+            return db;
+        }
+        return null;
+    }
+
+    async function waitForDatabaseConnection() {
+        let attempts = 0;
+        
+        if (window.DebugManager?.isEnabled('firebase')) {
+            console.log("⏳ [DB Check] Ověřuji spojení s warp jádrem (Firestore)...");
+        }
+        
+        while (!getFirestoreDB() && attempts < 50) { 
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        const isReady = !!getFirestoreDB();
+        
+        if (isReady) {
+            if (window.DebugManager?.isEnabled('firebase')) {
+                console.log("✅ [DB Check] Spojení NAVÁZÁNO.");
+            }
+        } else {
+            console.error("❌ [DB Check] Spojení SELHALO po 5 sekundách.");
+        }
+        return isReady;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🚀 INICIALIZACE FIREBASE
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.initializeFirebaseAppAudio = async function() {
+        log("INIT", "Zahajuji start sekvence Firebase...");
+        
+        return new Promise((resolve) => {
+            const check = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.firestore) {
+                    clearInterval(check);
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                        log("INIT", "Firebase App Inicializována.");
+                    } else {
+                        log("INIT", "Firebase App již běží.");
+                    }
+                    db = firebase.firestore();
+                    window.db = db;
+                    resolve(true);
                 }
-                
-                db = firebase.firestore();
-                console.log("audioFirebaseFunctions.js: Firestore databáze připravena pro audio přehrávač.");
-                resolve(true); // Signalizuje úspěšnou inicializaci
-            } else {
-                console.log("audioFirebaseFunctions.js: Čekám na načtení Firebase SDK (včetně firestore modulu)...");
-            }
-        }, 100); // Kontrolujeme každých 100ms
-    });
-};
-
-// --- FUNKCE PRO UKLÁDÁNÍ DAT DO FIRESTORE ---
-
-// Ukládá celý playlist do Firestore
-window.savePlaylistToFirestore = async function(playlistArray) {
-    console.log("audioFirebaseFunctions.js: Pokus o uložení playlistu do Firestore.", playlistArray);
-    if (!db) {
-        //console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze uložit playlist.");
-        // Voláme globální showNotification, která by měla být definována v index.html
-        window.showNotification("Chyba: Databáze není připravena k uložení playlistu!", 'error');
-        throw new Error("Firestore databáze není připravena k uložení playlistu.");
-    }
-
-    // Pro jednoduchost uložíme celý playlist jako jeden dokument.
-    // POZOR: Firestore dokument má limit 1MB. Pokud máš 358 písniček s dlouhými URL/tituly,
-    // mohl by to být problém. Pokud ano, museli bychom to rozdělit na více dokumentů/subkolekce.
-    const playlistDocRef = db.collection('audioPlaylists').doc('mainPlaylist'); 
-    
-    try {
-        await playlistDocRef.set({ tracks: playlistArray }); // Uloží pole skladeb pod klíčem 'tracks'
-        console.log("audioFirebaseFunctions.js: Playlist úspěšně uložen do Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při ukládání playlistu do Firestore:", error);
-        window.showNotification("Chyba při ukládání playlistu do cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Ukládá oblíbené skladby do Firestore
-window.saveFavoritesToFirestore = async function(favoritesArray) {
-    console.log("audioFirebaseFunctions.js: Pokus o uložení oblíbených do Firestore.", favoritesArray);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze uložit oblíbené.");
-        window.showNotification("Chyba: Databáze není připravena k uložení oblíbených!", 'error');
-        throw new Error("Firestore databáze není připravena k uložení oblíbených.");
-    }
-
-    const favoritesDocRef = db.collection('audioPlayerSettings').doc('favorites'); 
-    
-    try {
-        await favoritesDocRef.set({ titles: favoritesArray }, { merge: true }); 
-        console.log("audioFirebaseFunctions.js: Oblíbené skladby úspěšně uloženy do Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při ukládání oblíbených do Firestore:", error);
-        window.showNotification("Chyba při ukládání oblíbených do cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Ukládá nastavení přehrávače (např. shuffle, loop, lastPlayedIndex) do Firestore
-window.savePlayerSettingsToFirestore = async function(settingsObject) {
-    console.log("audioFirebaseFunctions.js: Pokus o uložení nastavení přehrávače do Firestore.", settingsObject);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze uložit nastavení přehrávače.");
-        window.showNotification("Chyba: Databáze není připravena k uložení nastavení přehrávače!", 'error');
-        throw new Error("Firestore databáze není připravena k uložení nastavení přehrávače.");
-    }
-
-    const playerSettingsDocRef = db.collection('audioPlayerSettings').doc('mainSettings'); 
-    
-    try {
-        await playerSettingsDocRef.set(settingsObject, { merge: true }); 
-        console.log("audioFirebaseFunctions.js: Nastavení přehrávače úspěšně uložena do Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při ukládání nastavení přehrávače do Firestore:", error);
-        window.showNotification("Chyba při ukládání nastavení přehrávače do cloudu!", 'error');
-        throw error;
-    }
-};
-
-
-// --- FUNKCE PRO NAČÍTÁNÍ DAT Z FIRESTORE ---
-
-// Načítá playlist z Firestore
-window.loadPlaylistFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení playlistu z Firestore.");
-    if (!db) {
-        //console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst playlist.");
-        return null; 
-    }
-
-    try {
-        const doc = await db.collection('audioPlaylists').doc('mainPlaylist').get();
-        if (doc.exists && doc.data().tracks) {
-            console.log("audioFirebaseFunctions.js: Playlist úspěšně načten z Firestore.", doc.data().tracks.length, "skladeb.");
-            return doc.data().tracks; 
-        } else {
-            console.log("audioFirebaseFunctions.js: Dokument s playlistem 'mainPlaylist' neexistuje nebo je prázdný.");
-            return null;
-        }
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání playlistu z Firestore:", error);
-        window.showNotification("Chyba při načítání playlistu z cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Načítá oblíbené skladby z Firestore
-window.loadFavoritesFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení oblíbených z Firestore.");
-    if (!db) {
-       // console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst oblíbené.");
-        return null;
-    }
-
-    try {
-        const doc = await db.collection('audioPlayerSettings').doc('favorites').get();
-        if (doc.exists && doc.data().titles) {
-            console.log("audioFirebaseFunctions.js: Oblíbené skladby úspěšně načteny z Firestore.", doc.data().titles.length, "oblíbených.");
-            return doc.data().titles; 
-        } else {
-            console.log("audioFirebaseFunctions.js: Dokument s oblíbenými 'favorites' neexistuje nebo je prázdný.");
-            return null;
-        }
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání oblíbených z Firestore:", error);
-        window.showNotification("Chyba při načítání oblíbených z cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Načítá nastavení přehrávače z Firestore
-window.loadPlayerSettingsFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení nastavení přehrávače z Firestore.");
-    if (!db) {
-        //console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst nastavení přehrávače.");
-        return null;
-    }
-
-    try {
-        const doc = await db.collection('audioPlayerSettings').doc('mainSettings').get();
-        if (doc.exists) {
-            console.log("audioFirebaseFunctions.js: Nastavení přehrávače úspěšně načtena z Firestore.", doc.data());
-            return doc.data(); 
-        } else {
-            console.log("audioFirebaseFunctions.js: Dokument s nastavením přehrávače 'mainSettings' neexistuje.");
-            return null;
-        }
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání nastavení přehrávače z Firestore:", error);
-        window.showNotification("Chyba při načítání nastavení přehrávače z cloudu!", 'error');
-        throw error;
-    }
-};
-
-
-// --- FUNKCE PRO SMAZÁNÍ DAT Z FIRESTORE (POZOR! DŮRAZNĚ!) ---
-
-// Funkce pro smazání všech dat ze všech kolekcí audio přehrávače
-window.clearAllAudioFirestoreData = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o smazání VŠECH dat audio přehrávače z Firestore (všechny určené kolekce).");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat všechna data.");
-        window.showNotification("Chyba: Databáze není připravena k mazání všech dat!", 'error');
-        throw new Error("Firestore databáze není připravena ke smazání všech dat.");
-    }
-
-    try {
-        const collectionsToClear = ['audioPlaylists', 'audioPlayerSettings']; // Kolekce specifické pro audio přehrávač
-        let totalDeletedCount = 0;
-
-        for (const collectionName of collectionsToClear) {
-            console.log(`audioFirebaseFunctions.js: Spouštím mazání dokumentů z kolekce '${collectionName}'.`);
-            const collectionRef = db.collection(collectionName);
-            const snapshot = await collectionRef.get();
-            const batch = db.batch();
-            let deletedInCollection = 0;
-
-            if (snapshot.size === 0) {
-                console.log(`audioFirebaseFunctions.js: Kolekce '${collectionName}' je již prázdná.`);
-                continue; 
-            }
-
-            snapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
-                deletedInCollection++;
-            });
-
-            console.log(`audioFirebaseFunctions.js: Přidáno ${deletedInCollection} dokumentů z kolekce '${collectionName}' do dávky pro smazání.`);
-            await batch.commit();
-            console.log(`audioFirebaseFunctions.js: Smazáno ${deletedInCollection} dokumentů z kolekce '${collectionName}'.`);
-            totalDeletedCount += deletedInCollection;
-        }
-        
-        console.log(`audioFirebaseFunctions.js: Všechna data audio přehrávače z Firestore úspěšně smazána. Celkem smazáno: ${totalDeletedCount} dokumentů.`);
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání všech dat z Firestore:", error);
-        window.showNotification("Chyba při mazání všech dat z cloudu!", 'error');
-        throw error;
-    }
-};
- 
-//tady začíná playlit konfigurace?$
-
-
-
-// Rozšíření pro audioFirebaseFunctions.js
-// Přidej tento kód na konec svého audioFirebaseFunctions.js souboru
-
-// --- FUNKCE PRO UKLÁDÁNÍ A NAČÍTÁNÍ NASTAVENÍ PLAYLISTU ---
-
-// Ukládá nastavení playlistu (vzhled, styly, chování) do Firestore
-window.savePlaylistSettingsToFirestore = async function(playlistSettingsObject) {
-    console.log("audioFirebaseFunctions.js: Pokus o uložení nastavení playlistu do Firestore.", playlistSettingsObject);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze uložit nastavení playlistu.");
-        window.showNotification("Chyba: Databáze není připravena k uložení nastavení playlistu!", 'error');
-        throw new Error("Firestore databáze není připravena k uložení nastavení playlistu.");
-    }
-
-    const playlistSettingsDocRef = db.collection('audioPlayerSettings').doc('playlistSettings'); 
-    
-    try {
-        // Přidáváme timestamp pro sledování posledních změn
-        const settingsWithTimestamp = {
-            ...playlistSettingsObject,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-            version: "1.0" // Pro případné budoucí migrace
-        };
-
-        await playlistSettingsDocRef.set(settingsWithTimestamp, { merge: true }); 
-        console.log("audioFirebaseFunctions.js: Nastavení playlistu úspěšně uložena do Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při ukládání nastavení playlistu do Firestore:", error);
-        window.showNotification("Chyba při ukládání nastavení playlistu do cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Načítá nastavení playlistu z Firestore
-window.loadPlaylistSettingsFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení nastavení playlistu z Firestore.");
-    if (!db) {
-        console.log("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst nastavení playlistu.");
-        return null;
-    }
-
-    try {
-        const doc = await db.collection('audioPlayerSettings').doc('playlistSettings').get();
-        if (doc.exists) {
-            const data = doc.data();
-            
-            // Odstraníme metadata před vrácením nastavení
-            const { lastUpdated, version, ...playlistSettings } = data;
-            
-            console.log("audioFirebaseFunctions.js: Nastavení playlistu úspěšně načtena z Firestore.", playlistSettings);
-            console.log(`audioFirebaseFunctions.js: Nastavení playlistu - verze: ${version || 'neznámá'}, poslední aktualizace:`, lastUpdated?.toDate?.() || 'neznámá');
-            
-            return playlistSettings;
-        } else {
-            console.log("audioFirebaseFunctions.js: Dokument s nastavením playlistu 'playlistSettings' neexistuje.");
-            return null;
-        }
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání nastavení playlistu z Firestore:", error);
-        window.showNotification("Chyba při načítání nastavení playlistu z cloudu!", 'error');
-        return null; // Vrátíme null místo throw, aby se aplikace nezhroutila
-    }
-};
-
-// Smazání nastavení playlistu z Firestore
-window.clearPlaylistSettingsFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o smazání nastavení playlistu z Firestore.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat nastavení playlistu.");
-        window.showNotification("Chyba: Databáze není připravena k mazání nastavení playlistu!", 'error');
-        throw new Error("Firestore databáze není připravena ke smazání nastavení playlistu.");
-    }
-
-    try {
-        const playlistSettingsDocRef = db.collection('audioPlayerSettings').doc('playlistSettings');
-        await playlistSettingsDocRef.delete();
-        console.log("audioFirebaseFunctions.js: Nastavení playlistu úspěšně smazána z Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání nastavení playlistu z Firestore:", error);
-        window.showNotification("Chyba při mazání nastavení playlistu z cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Export/Backup nastavení playlistu do JSON formátu uložený v Firestore
-window.backupPlaylistSettingsToFirestore = async function(backupName = null) {
-    console.log("audioFirebaseFunctions.js: Pokus o vytvoření zálohy nastavení playlistu.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze vytvořit zálohu.");
-        throw new Error("Firestore databáze není připravena k vytvoření zálohy.");
-    }
-
-    try {
-        // Nejdříve načteme aktuální nastavení
-        const currentSettings = await window.loadPlaylistSettingsFromFirestore();
-        if (!currentSettings) {
-            throw new Error("Žádná nastavení playlistu k zálohování nenalezena.");
-        }
-
-        // Vytvoříme název zálohy
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const finalBackupName = backupName || `backup-${timestamp}`;
-
-        // Uložíme zálohu
-        const backupDocRef = db.collection('audioPlayerSettings').doc('backups').collection('playlistSettingsBackups').doc(finalBackupName);
-        
-        await backupDocRef.set({
-            ...currentSettings,
-            backupCreated: firebase.firestore.FieldValue.serverTimestamp(),
-            backupName: finalBackupName
+            }, 100);
         });
+    };
 
-        console.log(`audioFirebaseFunctions.js: Záloha nastavení playlistu úspěšně vytvořena: ${finalBackupName}`);
-        return finalBackupName;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při vytváření zálohy nastavení playlistu:", error);
-        window.showNotification("Chyba při vytváření zálohy nastavení!", 'error');
-        throw error;
-    }
-};
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎵 HLAVNÍ PLAYLIST (UPRAVENO - BEZ HTTPS ODKAZŮ)
+    // ═══════════════════════════════════════════════════════════════════════════
 
-// Obnovení nastavení playlistu ze zálohy
-window.restorePlaylistSettingsFromBackup = async function(backupName) {
-    console.log(`audioFirebaseFunctions.js: Pokus o obnovení nastavení playlistu ze zálohy: ${backupName}`);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze obnovit ze zálohy.");
-        throw new Error("Firestore databáze není připravena k obnovení ze zálohy.");
-    }
+    /**
+     * 💾 SAVE PLAYLIST - Ukládáme JEN názvy skladeb (BEZ src odkazů)
+     */
+    window.savePlaylistToFirestore = async function(tracks) {
+        log("SAVE Playlist", "🚀 Požadavek na uložení playlistu přijat (JEN názvy, BEZ odkazů).");
 
-    try {
-        const backupDocRef = db.collection('audioPlayerSettings').doc('backups').collection('playlistSettingsBackups').doc(backupName);
-        const doc = await backupDocRef.get();
-        
-        if (!doc.exists) {
-            throw new Error(`Záloha '${backupName}' nebyla nalezena.`);
+        const isReady = await waitForDatabaseConnection();
+        const database = getFirestoreDB();
+
+        if (!isReady || !database) {
+            log("SAVE Playlist", "Databáze nedostupná!", null, 'error');
+            if (window.showNotification) window.showNotification("Chyba: Cloud nedostupný!", "error");
+            return false;
         }
 
-        const backupData = doc.data();
-        const { backupCreated, backupName: originalBackupName, ...settingsToRestore } = backupData;
-
-        // Uložíme obnovená nastavení jako aktuální
-        await window.savePlaylistSettingsToFirestore(settingsToRestore);
-        
-        console.log(`audioFirebaseFunctions.js: Nastavení playlistu úspěšně obnovena ze zálohy: ${backupName}`);
-        console.log("audioFirebaseFunctions.js: Záloha byla vytvořena:", backupCreated?.toDate?.());
-        
-        return settingsToRestore;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při obnovování nastavení ze zálohy:", error);
-        window.showNotification(`Chyba při obnovování ze zálohy: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// Seznam dostupných záloh nastavení playlistu
-window.listPlaylistSettingsBackups = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení seznamu záloh nastavení playlistu.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst seznam záloh.");
-        return [];
-    }
-
-    try {
-        const backupsCollectionRef = db.collection('audioPlayerSettings').doc('backups').collection('playlistSettingsBackups');
-        const snapshot = await backupsCollectionRef.orderBy('backupCreated', 'desc').get();
-        
-        const backups = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            backups.push({
-                id: doc.id,
-                name: data.backupName || doc.id,
-                created: data.backupCreated?.toDate?.() || null,
-                settingsCount: Object.keys(data).length - 2 // -2 pro backupCreated a backupName
-            });
-        });
-
-        console.log(`audioFirebaseFunctions.js: Nalezeno ${backups.length} záloh nastavení playlistu.`);
-        return backups;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání seznamu záloh:", error);
-        window.showNotification("Chyba při načítání seznamu záloh!", 'error');
-        return [];
-    }
-};
-
-// Smazání konkrétní zálohy nastavení playlistu  
-window.deletePlaylistSettingsBackup = async function(backupName) {
-    console.log(`audioFirebaseFunctions.js: Pokus o smazání zálohy nastavení playlistu: ${backupName}`);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat zálohu.");
-        throw new Error("Firestore databáze není připravena ke smazání zálohy.");
-    }
-
-    try {
-        const backupDocRef = db.collection('audioPlayerSettings').doc('backups').collection('playlistSettingsBackups').doc(backupName);
-        await backupDocRef.delete();
-        
-        console.log(`audioFirebaseFunctions.js: Záloha nastavení playlistu '${backupName}' úspěšně smazána.`);
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání zálohy:", error);
-        window.showNotification(`Chyba při mazání zálohy: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// --- AKTUALIZACE EXISTUJÍCÍ clearAllAudioFirestoreData FUNKCE ---
-// Přepis stávající funkce, aby zahrnovala i nastavení playlistu
-
-const originalClearAllAudioFirestoreData = window.clearAllAudioFirestoreData;
-
-window.clearAllAudioFirestoreData = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o smazání VŠECH dat audio přehrávače z Firestore (včetně nastavení playlistu).");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat všechna data.");
-        window.showNotification("Chyba: Databáze není připravena k mazání všech dat!", 'error');
-        throw new Error("Firestore databáze není připravena ke smazání všech dat.");
-    }
-
-    try {
-        // Nejdříve zavoláme původní funkci
-        await originalClearAllAudioFirestoreData();
-        
-        // Poté smažeme i zálohy nastavení playlistu
-        console.log("audioFirebaseFunctions.js: Mažu všechny zálohy nastavení playlistu...");
-        const backupsCollectionRef = db.collection('audioPlayerSettings').doc('backups').collection('playlistSettingsBackups');
-        const backupsSnapshot = await backupsCollectionRef.get();
-        
-        const backupsBatch = db.batch();
-        let deletedBackupsCount = 0;
-        
-        backupsSnapshot.docs.forEach(doc => {
-            backupsBatch.delete(doc.ref);
-            deletedBackupsCount++;
-        });
-        
-        if (deletedBackupsCount > 0) {
-            await backupsBatch.commit();
-            console.log(`audioFirebaseFunctions.js: Smazáno ${deletedBackupsCount} záloh nastavení playlistu.`);
-        } else {
-            console.log("audioFirebaseFunctions.js: Žádné zálohy nastavení playlistu k smazání.");
-        }
-        
-        console.log("audioFirebaseFunctions.js: Všechna data audio přehrávače včetně nastavení playlistu a záloh úspěšně smazána.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání všech dat z Firestore:", error);
-        window.showNotification("Chyba při mazání všech dat z cloudu!", 'error');
-        throw error;
-    }
-};
-
-// Utility funkce pro debugging nastavení playlistu
-window.debugPlaylistSettings = async function() {
-    if (!db) {
-        console.log("DEBUG: Firestore databáze není inicializována.");
-        return;
-    }
-    
-    try {
-        console.log("=== DEBUG: Playlist Settings ===");
-        
-        // Načteme aktuální nastavení
-        const settings = await window.loadPlaylistSettingsFromFirestore();
-        console.log("Aktuální nastavení:", settings);
-        
-        // Načteme seznam záloh
-        const backups = await window.listPlaylistSettingsBackups();
-        console.log("Dostupné zálohy:", backups);
-        
-        // Informace o dokumentech v kolekci
-        const doc = await db.collection('audioPlayerSettings').doc('playlistSettings').get();
-        console.log("Dokument existuje:", doc.exists);
-        if (doc.exists) {
-            console.log("Velikost dokumentu (přibližně):", JSON.stringify(doc.data()).length, "znaků");
-        }
-        
-        console.log("=== END DEBUG ===");
-    } catch (error) {
-        console.error("DEBUG: Chyba při ladění nastavení playlistu:", error);
-    }
-};
-
-console.log("audioFirebaseFunctions.js: Rozšíření pro nastavení playlistu načteno a připraveno.");
-
-
-
-//správa viditelnosti tlačítek
-
-// === FIREBASE ROZŠÍŘENÍ PRO SPRÁVU VIDITELNOSTI TLAČÍTEK ===
-// Přidej tento kód na konec svého audioFirebaseFunctions.js souboru
-// Více admirál Jiřík & Admirál Claude.AI - Hvězdná flotila
-
-console.log("🖖 Načítám Firebase rozšíření pro správu viditelnosti tlačítek...");
-
-// --- UKLÁDÁNÍ KONFIGURACE VIDITELNOSTI TLAČÍTEK ---
-
-// Ukládá konfiguraci viditelnosti tlačítek do Firestore
-window.saveButtonVisibilityToFirestore = async function(visibilityConfigObject) {
-    console.log("audioFirebaseFunctions.js: Pokus o uložení konfigurace viditelnosti tlačítek do Firestore.", visibilityConfigObject);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze uložit konfiguraci viditelnosti.");
-        window.showNotification("Chyba: Databáze není připravena k uložení konfigurace viditelnosti!", 'error');
-        throw new Error("Firestore databáze není připravena k uložení konfigurace viditelnosti.");
-    }
-
-    const visibilityDocRef = db.collection('audioPlayerSettings').doc('buttonVisibilityConfig');
-    
-    try {
-        // Přidáváme metadata pro sledování změn
-        const configWithMetadata = {
-            ...visibilityConfigObject,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-            version: "1.0",
-            deviceInfo: {
-                userAgent: navigator.userAgent.substring(0, 100), // Ořez pro Firestore limit
-                platform: navigator.platform,
-                language: navigator.language
-            },
-            configHash: generateConfigHash(visibilityConfigObject) // Pro detekci změn
-        };
-
-        await visibilityDocRef.set(configWithMetadata, { merge: true });
-        console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti tlačítek úspěšně uložena do Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při ukládání konfigurace viditelnosti do Firestore:", error);
-        window.showNotification("Chyba při ukládání konfigurace viditelnosti do cloudu!", 'error');
-        throw error;
-    }
-};
-
-// --- NAČÍTÁNÍ KONFIGURACE VIDITELNOSTI TLAČÍTEK ---
-
-// Načítá konfiguraci viditelnosti tlačítek z Firestore
-window.loadButtonVisibilityFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení konfigurace viditelnosti tlačítek z Firestore.");
-    if (!db) {
-        console.log("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst konfiguraci viditelnosti.");
-        return null;
-    }
-
-    try {
-        const doc = await db.collection('audioPlayerSettings').doc('buttonVisibilityConfig').get();
-        if (doc.exists) {
-            const data = doc.data();
-            
-            // Odstraníme metadata před vrácením konfigurace
-            const { lastUpdated, version, deviceInfo, configHash, ...visibilityConfig } = data;
-            
-            console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti tlačítek úspěšně načtena z Firestore.", visibilityConfig);
-            console.log(`audioFirebaseFunctions.js: Konfigurace viditelnosti - verze: ${version || 'neznámá'}, poslední aktualizace:`, lastUpdated?.toDate?.() || 'neznámá');
-            console.log(`audioFirebaseFunctions.js: Hash konfigurace: ${configHash || 'neznámý'}`);
-            
-            return visibilityConfig;
-        } else {
-            console.log("audioFirebaseFunctions.js: Dokument s konfigurací viditelnosti tlačítek neexistuje.");
-            return null;
-        }
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání konfigurace viditelnosti z Firestore:", error);
-        window.showNotification("Chyba při načítání konfigurace viditelnosti z cloudu!", 'error');
-        return null; // Vrátíme null místo throw, aby se aplikace nezhroutila
-    }
-};
-
-// --- ZÁLOHOVÁNÍ KONFIGURACE VIDITELNOSTI ---
-
-// Vytvoří zálohu konfigurace viditelnosti tlačítek
-window.backupButtonVisibilityToFirestore = async function(backupName = null, currentConfig = null) {
-    console.log("audioFirebaseFunctions.js: Pokus o vytvoření zálohy konfigurace viditelnosti tlačítek.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze vytvořit zálohu.");
-        throw new Error("Firestore databáze není připravena k vytvoření zálohy.");
-    }
-
-    try {
-        // Pokud není config poskytnut, načteme aktuální
-        let configToBackup = currentConfig;
-        if (!configToBackup) {
-            configToBackup = await window.loadButtonVisibilityFromFirestore();
-            if (!configToBackup) {
-                throw new Error("Žádná konfigurace viditelnosti tlačítek k zálohování nenalezena.");
-            }
+        const tracksToSave = tracks || window.tracks;
+        if (!tracksToSave || !Array.isArray(tracksToSave)) {
+            log("SAVE Playlist", "Žádná data k uložení (tracks je prázdné/null).", tracksToSave, 'error');
+            return false;
         }
 
-        // Vytvoříme název zálohy
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const finalBackupName = backupName || `visibility-backup-${timestamp}`;
-
-        // Uložíme zálohu
-        const backupDocRef = db.collection('audioPlayerSettings')
-            .doc('backups')
-            .collection('buttonVisibilityBackups')
-            .doc(finalBackupName);
-        
-        await backupDocRef.set({
-            ...configToBackup,
-            backupCreated: firebase.firestore.FieldValue.serverTimestamp(),
-            backupName: finalBackupName,
-            backupType: 'buttonVisibility',
-            originalHash: generateConfigHash(configToBackup)
-        });
-
-        console.log(`audioFirebaseFunctions.js: Záloha konfigurace viditelnosti úspěšně vytvořena: ${finalBackupName}`);
-        return finalBackupName;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při vytváření zálohy konfigurace viditelnosti:", error);
-        window.showNotification("Chyba při vytváření zálohy konfigurace viditelnosti!", 'error');
-        throw error;
-    }
-};
-
-// --- OBNOVENÍ Z ZÁLOHY ---
-
-// Obnoví konfiguraci viditelnosti ze zálohy
-window.restoreButtonVisibilityFromBackup = async function(backupName) {
-    console.log(`audioFirebaseFunctions.js: Pokus o obnovení konfigurace viditelnosti ze zálohy: ${backupName}`);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze obnovit ze zálohy.");
-        throw new Error("Firestore databáze není připravena k obnovení ze zálohy.");
-    }
-
-    try {
-        const backupDocRef = db.collection('audioPlayerSettings')
-            .doc('backups')
-            .collection('buttonVisibilityBackups')
-            .doc(backupName);
-        const doc = await backupDocRef.get();
-        
-        if (!doc.exists) {
-            throw new Error(`Záloha '${backupName}' nebyla nalezena.`);
-        }
-
-        const backupData = doc.data();
-        const { backupCreated, backupName: originalBackupName, backupType, originalHash, ...configToRestore } = backupData;
-
-        // Ověříme integritu zálohy
-        const restoredHash = generateConfigHash(configToRestore);
-        if (originalHash && originalHash !== restoredHash) {
-            console.warn("audioFirebaseFunctions.js: Varování - hash zálohy se neshoduje, možná je poškozená.");
-        }
-
-        // Uložíme obnovenou konfiguraci jako aktuální
-        await window.saveButtonVisibilityToFirestore(configToRestore);
-        
-        console.log(`audioFirebaseFunctions.js: Konfigurace viditelnosti úspěšně obnovena ze zálohy: ${backupName}`);
-        console.log("audioFirebaseFunctions.js: Záloha byla vytvořena:", backupCreated?.toDate?.());
-        
-        return configToRestore;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při obnovování konfigurace ze zálohy:", error);
-        window.showNotification(`Chyba při obnovování ze zálohy: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// --- SEZNAM ZÁLOH ---
-
-// Načte seznam dostupných záloh konfigurace viditelnosti
-window.listButtonVisibilityBackups = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o načtení seznamu záloh konfigurace viditelnosti.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze načíst seznam záloh.");
-        return [];
-    }
-
-    try {
-        const backupsCollectionRef = db.collection('audioPlayerSettings')
-            .doc('backups')
-            .collection('buttonVisibilityBackups');
-        const snapshot = await backupsCollectionRef.orderBy('backupCreated', 'desc').get();
-        
-        const backups = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            backups.push({
-                id: doc.id,
-                name: data.backupName || doc.id,
-                created: data.backupCreated?.toDate?.() || null,
-                type: data.backupType || 'buttonVisibility',
-                configCount: Object.keys(data).filter(key => !['backupCreated', 'backupName', 'backupType', 'originalHash'].includes(key)).length,
-                hash: data.originalHash || 'neznámý'
-            });
-        });
-
-        console.log(`audioFirebaseFunctions.js: Nalezeno ${backups.length} záloh konfigurace viditelnosti.`);
-        return backups;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při načítání seznamu záloh viditelnosti:", error);
-        window.showNotification("Chyba při načítání seznamu záloh konfigurace viditelnosti!", 'error');
-        return [];
-    }
-};
-
-// --- SMAZÁNÍ ZÁLOHY ---
-
-// Smaže konkrétní zálohu konfigurace viditelnosti
-window.deleteButtonVisibilityBackup = async function(backupName) {
-    console.log(`audioFirebaseFunctions.js: Pokus o smazání zálohy konfigurace viditelnosti: ${backupName}`);
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat zálohu.");
-        throw new Error("Firestore databáze není připravena ke smazání zálohy.");
-    }
-
-    try {
-        const backupDocRef = db.collection('audioPlayerSettings')
-            .doc('backups')
-            .collection('buttonVisibilityBackups')
-            .doc(backupName);
-        await backupDocRef.delete();
-        
-        console.log(`audioFirebaseFunctions.js: Záloha konfigurace viditelnosti '${backupName}' úspěšně smazána.`);
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání zálohy konfigurace viditelnosti:", error);
-        window.showNotification(`Chyba při mazání zálohy konfigurace viditelnosti: ${error.message}`, 'error');
-        throw error;
-    }
-};
-
-// --- SMAZÁNÍ KONFIGURACE ---
-
-// Smaže aktuální konfiguraci viditelnosti z Firestore
-window.clearButtonVisibilityFromFirestore = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o smazání konfigurace viditelnosti z Firestore.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat konfiguraci.");
-        throw new Error("Firestore databáze není připravena ke smazání konfigurace viditelnosti.");
-    }
-
-    try {
-        const visibilityDocRef = db.collection('audioPlayerSettings').doc('buttonVisibilityConfig');
-        await visibilityDocRef.delete();
-        console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti tlačítek úspěšně smazána z Firestore.");
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání konfigurace viditelnosti z Firestore:", error);
-        window.showNotification("Chyba při mazání konfigurace viditelnosti z cloudu!", 'error');
-        throw error;
-    }
-};
-
-// --- SYNCHRONIZACE KONFIGURACE ---
-
-// Synchronizuje místní konfiguraci s cloudem
-window.syncButtonVisibilityWithFirestore = async function(localConfig = null) {
-    console.log("audioFirebaseFunctions.js: Spouštím synchronizaci konfigurace viditelnosti s cloudem.");
-    if (!db) {
-        console.log("audioFirebaseFunctions.js: Firestore není k dispozici, synchronizace přeskočena.");
-        return { success: false, reason: 'firebase_not_available' };
-    }
-
-    try {
-        // Načteme konfiguraci z cloudu
-        const cloudConfig = await window.loadButtonVisibilityFromFirestore();
-        
-        if (!localConfig) {
-            // Pokud není lokální config poskytnut, načteme z localStorage
-            const stored = localStorage.getItem('buttonVisibility');
-            localConfig = stored ? JSON.parse(stored) : null;
-        }
-
-        let result = { success: true };
-
-        if (!cloudConfig && localConfig) {
-            // Cloud je prázdný, ale máme lokální - nahraj do cloudu
-            await window.saveButtonVisibilityToFirestore(localConfig);
-            result.action = 'uploaded_to_cloud';
-            result.message = 'Lokální konfigurace nahrána do cloudu';
-            
-        } else if (cloudConfig && !localConfig) {
-            // Cloud má konfiguraci, ale lokálně není - stáhni z cloudu
-            localStorage.setItem('buttonVisibility', JSON.stringify(cloudConfig));
-            result.action = 'downloaded_from_cloud';
-            result.message = 'Konfigurace stažena z cloudu';
-            result.config = cloudConfig;
-            
-        } else if (cloudConfig && localConfig) {
-            // Obě konfigurace existují - porovnej hashe
-            const localHash = generateConfigHash(localConfig);
-            const cloudHash = generateConfigHash(cloudConfig);
-            
-            if (localHash !== cloudHash) {
-                // Konfigurace se liší - použij novější
-                const cloudDoc = await db.collection('audioPlayerSettings').doc('buttonVisibilityConfig').get();
-                const cloudTimestamp = cloudDoc.exists ? cloudDoc.data().lastUpdated?.toDate?.() : null;
-                const localTimestamp = new Date(localStorage.getItem('buttonVisibilityLastModified') || 0);
-                
-                if (cloudTimestamp && cloudTimestamp > localTimestamp) {
-                    // Cloud je novější
-                    localStorage.setItem('buttonVisibility', JSON.stringify(cloudConfig));
-                    result.action = 'updated_from_cloud';
-                    result.message = 'Aktualizováno z cloudu (novější verze)';
-                    result.config = cloudConfig;
-                } else {
-                    // Lokální je novější nebo stejně starý
-                    await window.saveButtonVisibilityToFirestore(localConfig);
-                    result.action = 'updated_cloud';
-                    result.message = 'Cloud aktualizován lokální konfigurací';
-                }
-            } else {
-                result.action = 'no_changes';
-                result.message = 'Konfigurace je synchronizovaná';
-            }
-            
-        } else {
-            // Ani cloud ani lokální konfigurace neexistuje
-            result.action = 'no_config';
-            result.message = 'Žádná konfigurace k synchronizaci';
-        }
-
-        console.log("audioFirebaseFunctions.js: Synchronizace dokončena:", result);
-        return result;
-        
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při synchronizaci konfigurace viditelnosti:", error);
-        return { success: false, error: error.message };
-    }
-};
-
-// --- POMOCNÉ FUNKCE ---
-
-// Generuje hash konfigurace pro detekci změn
-function generateConfigHash(config) {
-    if (!config || typeof config !== 'object') return 'empty';
-    
-    try {
-        // Vytvoříme deterministický string z konfigurace
-        const sortedKeys = Object.keys(config).sort();
-        const configString = sortedKeys.map(key => `${key}:${config[key]}`).join('|');
-        
-        // Jednoduchý hash algoritmus
-        let hash = 0;
-        for (let i = 0; i < configString.length; i++) {
-            const char = configString.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Převede na 32bit integer
-        }
-        
-        return Math.abs(hash).toString(16);
-    } catch (error) {
-        console.error("Chyba při generování hash konfigurace:", error);
-        return 'error';
-    }
-}
-
-// Automatická synchronizace při načtení stránky
-window.autoSyncButtonVisibilityOnLoad = async function() {
-    console.log("audioFirebaseFunctions.js: Spouštím automatickou synchronizaci konfigurace viditelnosti při načtení.");
-    
-    // Počkáme na inicializaci Firebase
-    if (typeof window.initializeFirebaseAppAudio === 'function') {
         try {
-            await window.initializeFirebaseAppAudio();
-            const syncResult = await window.syncButtonVisibilityWithFirestore();
+            // 🔥 KLÍČOVÁ ZMĚNA: Ukládáme JEN názvy, ne odkazy
+            const cleanTracks = tracksToSave.map((track, index) => ({
+                // ✅ ULOŽÍME: Názvy a metadata
+                title: track.title || "Neznámá skladba",
+                originalTitle: track.originalTitle || track.title,
+                manuallyEdited: track.manuallyEdited || false,
+                lastEditedAt: track.lastEditedAt || null,
+                
+                // 🔑 PÁROVACÍ KLÍČ: Čistý odkaz (BEZ tokenu)
+                cleanSrc: track.src ? track.src.split('?')[0].trim() : `__INDEX_${index}__`,
+                
+                // ❌ NEULOŽÍME: track.src (HTTPS odkaz zůstane v myPlaylist.js)
+                // ❌ NEULOŽÍME: track.duration (nepotřebujeme)
+                // ❌ NEULOŽÍME: track.addedAt (nepotřebujeme)
+            }));
+
+            apiLog(`💾 Ukládám ${cleanTracks.length} názvů skladeb do 'app_data/main_playlist' (BEZ HTTPS)`);
             
-            if (syncResult.success && syncResult.config) {
-                // Aplikujeme nově načtenou konfiguraci
-                if (window.ButtonVisibilityManager && typeof window.ButtonVisibilityManager.setConfig === 'function') {
-                    window.ButtonVisibilityManager.setConfig(syncResult.config);
-                    console.log("audioFirebaseFunctions.js: Konfigurace viditelnosti aplikována po synchronizaci.");
-                }
+            if (window.DebugManager?.isEnabled('firebase')) {
+                log("SAVE Playlist", `Připravuji ${cleanTracks.length} názvů k teleportaci.`, cleanTracks);
             }
-            
-            if (window.showNotification && syncResult.message) {
-                window.showNotification(`Synchronizace viditelnosti: ${syncResult.message}`, 'info', 3000);
-            }
-            
+
+            await database.collection("app_data").doc("main_playlist").set({
+                tracks: cleanTracks,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                totalTracks: cleanTracks.length,
+                version: "3.5-NoSrcLinks-Clean"
+            });
+
+            log("SAVE Playlist", "✅ ZÁPIS ÚSPĚŠNÝ! Názvy jsou v cloudu.", null, 'success');
+            if (window.showNotification) window.showNotification("Názvy skladeb uloženy do Cloudu!", "success");
+            return true;
+
         } catch (error) {
-            console.error("audioFirebaseFunctions.js: Chyba při automatické synchronizaci:", error);
+            console.error("❌ CRITICAL SAVE ERROR:", error);
+            log("SAVE Playlist", "KRITICKÁ CHYBA PŘI ZÁPISU", error, 'error');
+            if (window.showNotification) window.showNotification("Chyba při ukládání!", "error");
+            throw error;
         }
-    }
-};
+    };
 
-// --- AKTUALIZACE clearAllAudioFirestoreData FUNKCE ---
+    /**
+     * 📥 LOAD PLAYLIST - Párujeme názvy z Cloudu s odkazy z myPlaylist.js
+     */
+    window.loadPlaylistFromFirestore = async function() {
+        log("LOAD Playlist", "📥 Požadavek na stažení playlistu (názvy z Cloudu + odkazy lokálně).");
 
-// Rozšíříme existující funkci pro mazání všech dat o konfiguraci viditelnosti
-const originalClearAllAudioFirestoreDataWithVisibility = window.clearAllAudioFirestoreData;
-
-window.clearAllAudioFirestoreData = async function() {
-    console.log("audioFirebaseFunctions.js: Pokus o smazání VŠECH dat včetně konfigurace viditelnosti tlačítek.");
-    if (!db) {
-        console.error("audioFirebaseFunctions.js: Firestore databáze není inicializována, nelze smazat všechna data.");
-        window.showNotification("Chyba: Databáze není připravena k mazání všech dat!", 'error');
-        throw new Error("Firestore databáze není připravena ke smazání všech dat.");
-    }
-
-    try {
-        // Nejdříve zavoláme původní funkci
-        if (originalClearAllAudioFirestoreDataWithVisibility) {
-            await originalClearAllAudioFirestoreDataWithVisibility();
-        } else {
-            // Fallback - smažeme hlavní kolekce
-            const collectionsToClean = ['audioPlaylists', 'audioPlayerSettings'];
-            for (const collectionName of collectionsToClean) {
-                const collectionRef = db.collection(collectionName);
-                const snapshot = await collectionRef.get();
-                const batch = db.batch();
-                
-                snapshot.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                if (snapshot.docs.length > 0) {
-                    await batch.commit();
-                    console.log(`audioFirebaseFunctions.js: Smazáno ${snapshot.docs.length} dokumentů z kolekce '${collectionName}'.`);
-                }
+        // 🔥 RACE CONDITION FIX: Čekáme na explicitní signál z myPlaylist.js
+        let waitAttempts = 0;
+        const maxAttempts = 100; // Zvýšeno z 30 na 100 (10 sekund místo 2.4s)
+        const waitInterval = 100; // 100ms interval
+        
+        log("LOAD Playlist", "⏳ Čekám na signál window.PLAYLIST_SOURCE_READY z myPlaylist.js...");
+        
+        while (!window.PLAYLIST_SOURCE_READY && waitAttempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, waitInterval));
+            waitAttempts++;
+            
+            // Progress log každou sekundu (každých 10 pokusů)
+            if (waitAttempts % 10 === 0 && window.DebugManager?.isEnabled('firebase')) {
+                console.log(`⏳ Stále čekám... (${waitAttempts * waitInterval / 1000}s / ${maxAttempts * waitInterval / 1000}s)`);
             }
         }
         
-        // Poté smažeme zálohy konfigurace viditelnosti
-        console.log("audioFirebaseFunctions.js: Mažu zálohy konfigurace viditelnosti...");
-        const visibilityBackupsRef = db.collection('audioPlayerSettings')
-            .doc('backups')
-            .collection('buttonVisibilityBackups');
-        const visibilitySnapshot = await visibilityBackupsRef.get();
-        
-        const visibilityBatch = db.batch();
-        let deletedVisibilityBackups = 0;
-        
-        visibilitySnapshot.docs.forEach(doc => {
-            visibilityBatch.delete(doc.ref);
-            deletedVisibilityBackups++;
-        });
-        
-        if (deletedVisibilityBackups > 0) {
-            await visibilityBatch.commit();
-            console.log(`audioFirebaseFunctions.js: Smazáno ${deletedVisibilityBackups} záloh konfigurace viditelnosti.`);
+        if (window.PLAYLIST_SOURCE_READY) {
+            log("LOAD Playlist", `✅ myPlaylist.js je READY! (${window.originalTracks?.length || 0} skladeb) - načetl se za ${waitAttempts * waitInterval}ms`, null, 'success');
+        } else {
+            log("LOAD Playlist", `⚠️ TIMEOUT po ${maxAttempts * waitInterval / 1000} sekundách! myPlaylist.js se nenačetl. Pokračuji s rizikem...`, null, 'error');
         }
-        
-        console.log("audioFirebaseFunctions.js: Všechna data audio přehrávače včetně konfigurace viditelnosti úspěšně smazána.");
-        
-        // Vyčistíme také localStorage
-        localStorage.removeItem('buttonVisibility');
-        localStorage.removeItem('buttonVisibilityLastModified');
-        
-        return true;
-    } catch (error) {
-        console.error("audioFirebaseFunctions.js: Chyba při mazání všech dat z Firestore:", error);
-        window.showNotification("Chyba při mazání všech dat z cloudu!", 'error');
-        throw error;
-    }
-};
 
-// --- DEBUGGING FUNKCE ---
+        const isReady = await waitForDatabaseConnection();
+        const database = getFirestoreDB();
 
-// Debug funkce pro testování konfigurace viditelnosti
-window.debugButtonVisibilityFirestore = async function() {
-    if (!db) {
-        console.log("DEBUG VISIBILITY: Firestore databáze není inicializována.");
-        return;
-    }
+        if (!isReady || !database) return null;
+
+        try {
+            const doc = await database.collection("app_data").doc("main_playlist").get();
+            
+            if (doc.exists) {
+                const data = doc.data();
+                const cloudTracks = data.tracks || [];
+                
+                apiLog(`📥 Načteno ${cloudTracks.length} názvů z Cloudu`);
+                
+                if (window.DebugManager?.isEnabled('firebase')) {
+                    log("LOAD Playlist", `✅ Dokument nalezen. Obsahuje ${cloudTracks.length} názvů.`, data, 'success');
+                }
+
+                // 🔥 PÁROVACÍ LOGIKA - Propojíme cloud názvy s lokálními odkazy
+                if (!window.originalTracks || window.originalTracks.length === 0) {
+                    log("LOAD Playlist", "⚠️ window.originalTracks je prázdné! Nelze párovat.", null, 'error');
+                    return cloudTracks; // Vrátíme alespoň názvy
+                }
+
+                // Vytvoříme mapu: cleanSrc → cloudData
+                const cloudMap = new Map();
+                cloudTracks.forEach(ct => {
+                    if (ct.cleanSrc) {
+                        cloudMap.set(ct.cleanSrc, ct);
+                    }
+                });
+
+                // Projdeme lokální skladby a najdeme jim názvy z Cloudu
+                const mergedTracks = window.originalTracks.map((localTrack, index) => {
+                    const cleanSrc = localTrack.src ? localTrack.src.split('?')[0].trim() : `__INDEX_${index}__`;
+                    const cloudData = cloudMap.get(cleanSrc);
+
+                    if (cloudData) {
+                        // ✅ NAŠLI JSME SHODU - použijeme název z Cloudu
+                        return {
+                            src: localTrack.src, // ✅ Odkaz z myPlaylist.js
+                            title: cloudData.title, // ✅ Název z Cloudu
+                            originalTitle: cloudData.originalTitle || localTrack.title,
+                            manuallyEdited: cloudData.manuallyEdited || false,
+                            lastEditedAt: cloudData.lastEditedAt || null,
+                            duration: localTrack.duration || "" // Z lokálu
+                        };
+                    } else {
+                        // ⚠️ NENÍ V CLOUDU - nová skladba, použijeme lokální název
+                        log("LOAD Playlist", `⚠️ Skladba "${localTrack.title}" není v Cloudu (nová?)`, null, 'info');
+                        return localTrack;
+                    }
+                });
+
+                log("LOAD Playlist", `✅ Spárováno ${mergedTracks.length} skladeb (názvy z Cloudu + odkazy lokálně)`, null, 'success');
+                return mergedTracks;
+                
+            } else {
+                log("LOAD Playlist", "ℹ️ Dokument 'main_playlist' v kolekci 'app_data' neexistuje (první spuštění?).", null, 'info');
+                return null;
+            }
+        } catch (error) {
+            log("LOAD Playlist", "CHYBA PŘI ČTENÍ", error, 'error');
+            return null;
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⭐ OBLÍBENÉ SKLADBY
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.saveFavoritesToFirestore = async function(favoritesArray) {
+        apiLog("💾 Ukládám oblíbené...");
+        if (!await waitForDatabaseConnection()) return;
+        try {
+            await getFirestoreDB().collection('audioPlayerSettings').doc('favorites')
+                .set({ titles: favoritesArray }, { merge: true });
+            log("SAVE Favorites", "✅ Oblíbené uloženy.", null, 'success');
+        } catch (e) { log("SAVE Favorites", "Chyba", e, 'error'); }
+    };
+
+    window.loadFavoritesFromFirestore = async function() {
+        apiLog("📥 Načítám oblíbené...");
+        if (!await waitForDatabaseConnection()) return null;
+        try {
+            const doc = await getFirestoreDB().collection('audioPlayerSettings').doc('favorites').get();
+            const data = doc.exists ? doc.data().titles : null;
+            if (data) apiLog(`✅ Načteno ${data.length} oblíbených skladeb`);
+            return data;
+        } catch (e) { return null; }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⚙️ NASTAVENÍ PŘEHRÁVAČE
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.savePlayerSettingsToFirestore = async function(settings) {
+        apiLog("💾 Ukládám nastavení přehrávače...");
+        if (!await waitForDatabaseConnection()) return;
+        try {
+            await getFirestoreDB().collection('audioPlayerSettings').doc('mainSettings')
+                .set(settings, { merge: true });
+        } catch (e) { log("SAVE Settings", "Chyba", e, 'error'); }
+    };
+
+    window.loadPlayerSettingsFromFirestore = async function() {
+        if (!await waitForDatabaseConnection()) return null;
+        try {
+            const doc = await getFirestoreDB().collection('audioPlayerSettings').doc('mainSettings').get();
+            return doc.exists ? doc.data() : null;
+        } catch (e) { return null; }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛠️ NASTAVENÍ VZHLEDU PLAYLISTU
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.savePlaylistSettingsToFirestore = async function(settings) {
+        apiLog("💾 Ukládám vizuální nastavení playlistu...");
+        if (!await waitForDatabaseConnection()) return;
+        try {
+            await getFirestoreDB().collection('audioPlayerSettings').doc('playlistSettings')
+                .set({ ...settings, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            log("SAVE PlaylistStyle", "✅ Uloženo.", null, 'success');
+        } catch (e) { log("SAVE PlaylistStyle", "Chyba", e, 'error'); }
+    };
+
+    window.loadPlaylistSettingsFromFirestore = async function() {
+        apiLog("📥 Hledám vizuální nastavení...");
+        if (!await waitForDatabaseConnection()) return null;
+        try {
+            const doc = await getFirestoreDB().collection('audioPlayerSettings').doc('playlistSettings').get();
+            if (doc.exists) {
+                const { lastUpdated, version, ...data } = doc.data();
+                log("LOAD PlaylistStyle", "✅ Nalezeno.", data);
+                return data;
+            }
+            return null;
+        } catch (e) { return null; }
+    };
+
     
-    try {
-        console.log("=== DEBUG: Button Visibility Firestore ===");
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧹 ÚDRŽBA - FUNKČNÍ ATOMOVKA
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.clearAllAudioFirestoreData = async function() {
+        log("DANGER", "⚠️ SPUŠTĚNA SEKVICE AUTODESTRUKCE CLOUDU!", null, 'error');
         
-        // Načteme aktuální konfiguraci
-        const config = await window.loadButtonVisibilityFromFirestore();
-        console.log("Aktuální konfigurace viditelnosti:", config);
-        
-        // Načteme seznam záloh
-        const backups = await window.listButtonVisibilityBackups();
-        console.log("Dostupné zálohy konfigurace viditelnosti:", backups);
-        
-        // Informace o dokumentech
-        const doc = await db.collection('audioPlayerSettings').doc('buttonVisibilityConfig').get();
-        console.log("Dokument konfigurace existuje:", doc.exists);
-        if (doc.exists) {
-            console.log("Velikost dokumentu (přibližně):", JSON.stringify(doc.data()).length, "znaků");
-            console.log("Metadata dokumentu:", doc.data().lastUpdated?.toDate?.(), doc.data().version);
+        const isReady = await waitForDatabaseConnection();
+        const database = getFirestoreDB();
+
+        if (!isReady || !database) {
+            log("DANGER", "Nelze smazat - Cloud nedostupný!", null, 'error');
+            return false;
         }
-        
-        // Test synchronizace
-        const syncResult = await window.syncButtonVisibilityWithFirestore();
-        console.log("Test synchronizace:", syncResult);
-        
-        console.log("=== END DEBUG VISIBILITY ===");
-        
-        return {
-            config,
-            backups,
-            documentExists: doc.exists,
-            syncResult
-        };
-    } catch (error) {
-        console.error("DEBUG VISIBILITY: Chyba při ladění:", error);
-        return { error: error.message };
-    }
-};
 
-// --- INICIALIZACE PO NAČTENÍ ---
+        try {
+            // 1. Smazání hlavního playlistu
+            await database.collection("app_data").doc("main_playlist").delete();
+            log("DANGER", "🔥 Dokument 'main_playlist' smazán.", null, 'success');
 
-// Automatická inicializace po načtení Firebase
-if (typeof window !== 'undefined') {
-    // Počkáme na načtení Firebase a pak spustíme auto-sync
-    const checkFirebaseAndSync = setInterval(() => {
-        if (window.db || (typeof firebase !== 'undefined' && firebase.apps?.length > 0)) {
-            clearInterval(checkFirebaseAndSync);
-            setTimeout(() => {
-                window.autoSyncButtonVisibilityOnLoad();
-            }, 2000); // Dáme čas na inicializaci ostatních komponent
+            // 2. Smazání všech nastavení (BEZ button_visibility)
+            const settingsDocs = ['favorites', 'mainSettings', 'playlistSettings'];
+            for (const docId of settingsDocs) {
+                await database.collection('audioPlayerSettings').doc(docId).delete();
+                log("DANGER", `🔥 Nastavení '${docId}' smazáno.`, null, 'success');
+            }
+
+            log("DANGER", "✅ AUDIO CLOUD JE ČISTÝ (Tabula Rasa).", null, 'success');
+
+            // 3. Totální čistka lokální paměti (jen audio části)
+            const keysToRemove = ['favorites', 'playerSettings', 'playlistSettings'];
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            log("DANGER", "🧹 Lokální audio cache vymazána.", null, 'success');
+
+            if (window.showNotification) {
+                window.showNotification("Audio data vymazána. Systém se restartuje...", "success");
+            }
+
+            // 4. Restart lodi
+            setTimeout(() => location.reload(), 1500);
+            return true;
+
+        } catch (error) {
+            console.error("❌ CHYBA PŘI MAZÁNÍ:", error);
+            log("DANGER", "Smazání selhalo!", error, 'error');
+            return false;
         }
-    }, 1000);
-    
-    // Fallback - pokud se Firebase neinicializuje do 30 sekund, přestaneme čekat
-    setTimeout(() => {
-        clearInterval(checkFirebaseAndSync);
-    }, 30000);
-}
+    };
 
-console.log("🖖 Firebase rozšíření pro správu viditelnosti tlačítek načteno a připraveno!");
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📡 ZÁVĚREČNÁ ZPRÁVA
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log(
+        "%c🖖 audioFirebaseFunctions V3.5 - CLEAN (bez Button Visibility)", 
+        "color: #00FF00; font-size: 14px; font-weight: bold; background: #000; padding: 10px; border: 2px solid #00FF00;"
+    );
+    console.log(
+        "%c   📡 Napojeno na DebugManager | Modul: 'firebase'", 
+        "color: #FFCC00; font-size: 12px;"
+    );
+    console.log(
+        "%c   🔒 HTTPS odkazy SE NEUKLÁDAJÍ do Cloudu (jen názvy)", 
+        "color: #00CCFF; font-size: 11px; font-weight: bold;"
+    );
+    console.log(
+        "%c   🧹 Button Visibility ODSTRANĚNO - separátní modul", 
+        "color: #FF6B35; font-size: 11px; font-weight: bold;"
+    );
+    console.log(
+        "%c   Zapni logging: Ctrl+Shift+D → Firebase modul", 
+        "color: #00CCFF; font-size: 11px;"
+    );
 
-// --- EXPORT FUNKCÍ ---
-window.ButtonVisibilityFirebaseManager = {
-    save: window.saveButtonVisibilityToFirestore,
-    load: window.loadButtonVisibilityFromFirestore,
-    backup: window.backupButtonVisibilityToFirestore,
-    restore: window.restoreButtonVisibilityFromBackup,
-    listBackups: window.listButtonVisibilityBackups,
-    deleteBackup: window.deleteButtonVisibilityBackup,
-    clear: window.clearButtonVisibilityFromFirestore,
-    sync: window.syncButtonVisibilityWithFirestore,
-    autoSync: window.autoSyncButtonVisibilityOnLoad,
-    debug: window.debugButtonVisibilityFirestore
-};
+})();
